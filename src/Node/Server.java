@@ -4,21 +4,33 @@ import NIOChannels.Message;
 import NIOChannels.Socket;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.sql.SQLException;
 import java.util.Queue;
 import java.util.UUID;
+import Database.Database;
 
 public class Server extends NIOChannels.Server
 {
 
     private Socket socketToLB;
+    private String nodeId;
+
+    private Database db;
 
     public Server( int nodePort )
     {
         super(nodePort, new MessageProcessorBuilder());
+        connectToLB("localhost",8080);
+        nodeId = UUID.randomUUID().toString();
+        String messageTxt = "ADD_NODE " + nodeId;
+        try {
+            db = new Database(nodeId);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        sendMessageToLB(messageTxt);
     }
 
 
@@ -39,11 +51,8 @@ public class Server extends NIOChannels.Server
         }
     }
 
-    public void sendMessageToLB(byte[] message){
-        Queue<Message> writeQueue = this.getWriteQueue();
-        synchronized (writeQueue) {
-            writeQueue.add(new Message(message, socketToLB));
-        }
+    public Database getDB(){
+        return db;
     }
     public void sendMessageToLB(String message){
         Queue<Message> writeQueue = this.getWriteQueue();
@@ -51,4 +60,6 @@ public class Server extends NIOChannels.Server
             writeQueue.add(new Message(message, socketToLB));
         }
     }
+
+
 }

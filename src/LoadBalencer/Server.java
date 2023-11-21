@@ -33,7 +33,7 @@ public class Server extends NIOChannels.Server
     public void put(String id,Object object) throws NoSuchAlgorithmException {
         int nrNodes = nodeHashes.size();
         String idHash = Utils.Hasher.md5(id);
-        int firstNodeToStoreIdx = binarySearch(idHash) + 1; //+1 because binary search returns idx for element <= id, we want idx for element > id
+        int firstNodeToStoreIdx = binarySearch(idHash);
         /*
         TODO: Dynamo stores at first node whose hash is >= hash(id), we are storing at the first larger (not equal)
          */
@@ -62,6 +62,5 @@ public class Server extends NIOChannels.Server
         }
         return low;
     }
-
 
 }

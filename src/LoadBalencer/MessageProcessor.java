@@ -18,14 +18,8 @@ public class MessageProcessor extends NIOChannels.MessageProcessor {
             TokenNode tokenNode = new TokenNode(message.getSocket(),nodeIdStr,server.getWriteQueue());
             Server loadBalancerServer = (Server) this.server;
 
-            ArrayList<Integer> list = new ArrayList<>();
-            list.add(1);
-            list.add(2);
-            list.add(3);
-
             try {
                 loadBalancerServer.addNodeToRing(tokenNode);
-                loadBalancerServer.put("id1",list);
 
             } catch (NoSuchAlgorithmException e) {
                 throw new RuntimeException(e);

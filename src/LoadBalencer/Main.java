@@ -1,5 +1,8 @@
 package LoadBalencer;
 
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Objects;
 import java.util.Scanner;
 
 // Press Shift twice to open the Search Everywhere dialog and type `show whitespaces`,
@@ -16,6 +19,17 @@ public class Main {
             System.out.println("Server is running");
             System.out.println("Type 'close' to exit");
             input = scanner.nextLine();
+            if(Objects.equals(input, "send")) {
+                ArrayList<Integer> list = new ArrayList<>();
+                list.add(1);
+                list.add(2);
+                list.add(3);
+                try {
+                    server.put("id1", list);
+                } catch (NoSuchAlgorithmException e) {
+                    throw new RuntimeException(e);
+                }
+            }
         } while (!input.equals("close"));
 
         System.out.println("Server closed");

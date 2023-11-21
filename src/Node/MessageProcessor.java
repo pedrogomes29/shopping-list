@@ -27,6 +27,7 @@ public class MessageProcessor extends NIOChannels.MessageProcessor {
                     nrSpaces++;
             }
             byte[] serializedObject = Arrays.copyOfRange(message.bytes, serializedObjectStartingIdx, message.bytes.length);
+            ((Node.Server)server).getDB().insertData(serializedObject);
             ByteArrayInputStream bis = new ByteArrayInputStream(serializedObject);
             ObjectInputStream in = null;
             try {
