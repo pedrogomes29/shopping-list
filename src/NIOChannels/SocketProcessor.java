@@ -27,14 +27,16 @@ public class SocketProcessor implements Runnable{
     private final ByteBuffer writeByteBuffer = ByteBuffer.allocate(1024 * 1024);
     private final Set<Socket> emptyToNonEmptySockets = new HashSet<>();
     private final Set<Socket> nonEmptyToEmptySockets = new HashSet<>();
-    private final Queue<Message> outboundMessageQueue = new LinkedList<>();
+    private final Queue<Message> outboundMessageQueue;
     private final Map<Long, Socket> socketMap = new HashMap<>();
     private final ExecutorService processorThreadPool;
 
     private final MessageProcessorBuilder messageProcessorBuilder;
 
-    public SocketProcessor(Server server, Queue<Socket> inboundSocketQueue, MessageProcessorBuilder messageProcessorBuilder) throws IOException{
+    public SocketProcessor(Server server, Queue<Socket> inboundSocketQueue,
+                           MessageProcessorBuilder messageProcessorBuilder, Queue<Message> outboundMessageQueue) throws IOException{
         this.inboundSocketQueue = inboundSocketQueue;
+        this.outboundMessageQueue = outboundMessageQueue;
         this.readSelector = Selector.open();
         this.writeSelector = Selector.open();
         this.server = server;
@@ -42,17 +44,14 @@ public class SocketProcessor implements Runnable{
         this.messageProcessorBuilder = messageProcessorBuilder;
     }
 
+
     @Override
     public void run() {
         while(server.running){
             try{
-                System.out.println("Execute cycle");
                 executeCycle();
-                Thread.sleep(1000);
             } catch(IOException e){
                 e.printStackTrace();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
             }
         }
     }
@@ -120,7 +119,6 @@ public class SocketProcessor implements Runnable{
             List<Message> fullMessages = socket.messageReader.messages;
             if (!fullMessages.isEmpty()) {
                 for (Message message : fullMessages) {
-
                     MessageProcessor messageProcessor = this.messageProcessorBuilder.build(message);
                     processorThreadPool.execute(messageProcessor);  //the message processor will eventually push outgoing messages into a MessageWriter for this socket.
                 }
@@ -198,7 +196,7 @@ public class SocketProcessor implements Runnable{
             outMessage = this.outboundMessageQueue.poll();
         }
         while(outMessage != null){
-            Socket socket = this.socketMap.get(outMessage.getSocketId());
+            Socket socket = outMessage.getSocket();
 
             if(socket != null){
                 MessageWriter messageWriter = socket.messageWriter;

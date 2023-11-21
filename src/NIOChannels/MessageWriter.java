@@ -31,7 +31,7 @@ public class MessageWriter {
         byteBuffer.clear();
 
         if(bytesWritten >= this.messageInProgress.bytes.length){
-            if(this.writeQueue.size() > 0){
+            if(!this.writeQueue.isEmpty()){
                 this.messageInProgress = this.writeQueue.remove(0);
             } else {
                 this.messageInProgress = null;

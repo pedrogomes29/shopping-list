@@ -17,36 +17,38 @@ public abstract class Server
 
     private Thread accepterThread;
     private  Thread processorThread;
-
-
+    private final Queue<Message> outboundMessageQueue;
+    private final Queue<Socket> socketQueue;
     public Server( int port, MessageProcessorBuilder messageProcessorBuilder )
     {
         this.port = port;
         this.messageProcessorBuilder = messageProcessorBuilder;
         messageProcessorBuilder.setServer(this);
+        this.outboundMessageQueue = new LinkedList<>();
+        this.socketQueue = new ArrayBlockingQueue<>(1024);
     }
 
+    public Queue<Message> getWriteQueue(){
+        return this.outboundMessageQueue;
+    }
+
+    public Queue<Socket> getSocketQueue() { return this.socketQueue; }
 
     public void stopServer() throws InterruptedException
     {
         running = false;
-        System.out.println("accepter");
         accepterThread.interrupt();
         accepterThread.join();
-        System.out.println("processor");
         processorThread.join();
-        System.out.println("end");
 
     }
 
     public void startThreads()
     {
         try {
-            Queue<Socket> socketQueue = new ArrayBlockingQueue<>(1024); //move 1024 to ServerConfig
-
             SocketAccepter socketAccepter = new SocketAccepter(this, socketQueue);
 
-            SocketProcessor socketProcessor = new SocketProcessor(this,socketQueue, messageProcessorBuilder);
+            SocketProcessor socketProcessor = new SocketProcessor(this,socketQueue, messageProcessorBuilder,this.outboundMessageQueue);
             accepterThread = new Thread(socketAccepter);
             processorThread = new Thread(socketProcessor);
 

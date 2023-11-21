@@ -44,7 +44,7 @@ public class MessageReader {
         int startIndex = 0;
         int endIndex = findNextLineBreak(src,startIndex);
         while(endIndex != -1) {
-            messages.add(new Message(Arrays.copyOfRange(src, startIndex, endIndex + 1),this.socket.getSocketId()));
+            messages.add(new Message(Arrays.copyOfRange(src, startIndex, endIndex + 1),this.socket));
             startIndex = endIndex + System.getProperty("line.separator").getBytes().length + 1;
             endIndex = findNextLineBreak(src,startIndex);
         }

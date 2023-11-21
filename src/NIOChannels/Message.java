@@ -1,19 +1,18 @@
 package NIOChannels;
 
 public class Message {
-    private long socketId;
+    private final Socket socket;
     public byte[] bytes;
-    public Message(byte[] bytes,long socketId) {
+    public Message(byte[] bytes,Socket socket) {
         this.bytes = bytes;
-        this.socketId = socketId;
+        this.socket = socket;
     }
-
-    public Message(String message,long socketId) {
+    public Message(String message,Socket socket) {
         this.bytes = (message+System.lineSeparator()).getBytes();
-        this.socketId = socketId;
+        this.socket = socket;
     }
 
-    public long getSocketId(){
-        return this.socketId;
+    public Socket getSocket(){
+        return this.socket;
     }
 }
