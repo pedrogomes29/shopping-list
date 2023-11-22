@@ -26,7 +26,7 @@ public class Server extends NIOChannels.Server
         nodeId = UUID.randomUUID().toString();
         String messageTxt = "ADD_NODE " + nodeId;
         try {
-            db = new Database(nodeId);
+            db = new Database("database/"+nodeId+".db");
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }

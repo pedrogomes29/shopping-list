@@ -1,9 +1,9 @@
-package LoadBalencer;
+package LoadBalancer;
 
-import NIOChannels.Socket;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Random;
 
 public class Server extends NIOChannels.Server
 {
@@ -29,19 +29,32 @@ public class Server extends NIOChannels.Server
         for (String nodeHash : nodeHashes) System.out.println(nodeHash);
     }
 
+    public static int generateRandomNumber(int min, int max) {
+        Random random = new Random();
+        return random.ints(min, max)
+                .findFirst()
+                .getAsInt();
+    }
 
-    public void put(String id,Object object) throws NoSuchAlgorithmException {
+    public void sendPut(Long clientID, String objectID, Object object) throws NoSuchAlgorithmException {
         int nrNodes = nodeHashes.size();
-        String idHash = Utils.Hasher.md5(id);
+        String idHash = Utils.Hasher.md5(objectID);
         int firstNodeToStoreIdx = binarySearch(idHash);
-        /*
-        TODO: Dynamo stores at first node whose hash is >= hash(id), we are storing at the first larger (not equal)
-         */
         for(int i=0;i<nrReplicas;i++){
             String nodeHash = nodeHashes.get( (firstNodeToStoreIdx+i)%nrNodes );
-            TokenNode nodeToStore = hashToNode.get(nodeHash);
-            nodeToStore.sendPut(id,object);
+            TokenNode node = hashToNode.get(nodeHash);
+            node.sendPut(clientID, objectID, object);
         }
+    }
+
+    public void sendGet(Long clientID,String objectID) throws NoSuchAlgorithmException {
+        int nrNodes = nodeHashes.size();
+        String idHash = Utils.Hasher.md5(objectID);
+        int firstNodeIdx = binarySearch(idHash);
+        int replicaToChoose = generateRandomNumber(firstNodeIdx,firstNodeIdx+nrReplicas);
+        String nodeHash = nodeHashes.get( replicaToChoose % nrNodes );
+        TokenNode node = hashToNode.get(nodeHash);
+        node.sendGet(clientID,objectID);
     }
 
     private int binarySearch(String hash) {

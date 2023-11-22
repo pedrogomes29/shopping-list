@@ -1,4 +1,4 @@
-package LoadBalencer;
+package LoadBalancer;
 
 import NIOChannels.Message;
 

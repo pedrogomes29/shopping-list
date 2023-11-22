@@ -1,0 +1,31 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation group: 'org.xerial', name: 'sqlite-jdbc', version: '3.44.0.0'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src']
+        }
+    }
+}
+
+tasks.register('runLoadBalancer', JavaExec) {
+    main = 'LoadBalancer.Main'
+    classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath
+    standardInput = System.in
+}
+
+tasks.register('runNode', JavaExec) {
+    main = 'Node.Main'
+    classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath
+    args project.hasProperty('port') ? [project.port] : []
+}

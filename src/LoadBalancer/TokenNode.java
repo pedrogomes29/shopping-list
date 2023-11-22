@@ -1,4 +1,4 @@
-package LoadBalencer;
+package LoadBalancer;
 
 import NIOChannels.Message;
 import NIOChannels.Socket;
@@ -8,8 +8,6 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.security.NoSuchAlgorithmException;
 import java.util.Queue;
-
-import static Utils.Hasher.md5;
 
 public class TokenNode {
     String id;
@@ -29,10 +27,10 @@ public class TokenNode {
         }
     }
 
-    public void sendPut(String id, Object object){
+    public void sendPut(Long clientID,String objectID, Object object){
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         try {
-            byte[] putHeader = ("PUT" + " " + id + " ").getBytes();
+            byte[] putHeader = ("PUT" + " " + clientID + " " + objectID + " ").getBytes();
 
             ObjectOutputStream out = new ObjectOutputStream(bos);
             out.writeObject(object);
@@ -43,7 +41,6 @@ public class TokenNode {
             System.arraycopy(putHeader,0,messageBytes,0,putHeader.length);
             System.arraycopy(objectBytes,0,messageBytes,putHeader.length,objectBytes.length);
             System.arraycopy(lineSeperator,0,messageBytes,putHeader.length+objectBytes.length,lineSeperator.length);
-            System.out.println(messageBytes.length);
             Message message = new Message(messageBytes, this.socket);
             synchronized (writeQueue) {
                 writeQueue.offer(message);
@@ -56,6 +53,13 @@ public class TokenNode {
             } catch (IOException ex) {
                 // ignore close exception
             }
+        }
+    }
+
+    public void sendGet(Long clientID,String objectID){
+        Message message = new Message("GET" + " " + clientID + " " + objectID, this.socket);
+        synchronized (writeQueue) {
+            writeQueue.offer(message);
         }
     }
 

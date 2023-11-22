@@ -1,9 +1,8 @@
-package LoadBalencer;
+package LoadBalancer;
 
 import NIOChannels.Message;
 
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
 
 public class MessageProcessor extends NIOChannels.MessageProcessor {
     public MessageProcessor(NIOChannels.Server server, Message message) {
@@ -24,6 +23,10 @@ public class MessageProcessor extends NIOChannels.MessageProcessor {
             } catch (NoSuchAlgorithmException e) {
                 throw new RuntimeException(e);
             }
+
+        }
+        else if(messageContent.startsWith("GET_RESPONSE")){
+            String nodeIdStr = messageContent.split(" ")[1];
 
         }
     }
