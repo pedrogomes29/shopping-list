@@ -50,6 +50,61 @@ public abstract class Server
 
     }
 
+    public void propagateRequestWithClientId(Message requestMsg, Socket nodeSocket){
+        long clientID = requestMsg.getSocket().getSocketId();
+
+        byte[] request = requestMsg.bytes;
+        String messageContent = new String(request);
+
+        String[] requestParts = messageContent.split(" ");
+        String requestMethod = requestParts[0];
+
+        int requestBodyStartIdx = requestMethod.length() + 1;
+
+        byte[] requestHeader = (requestMethod + " " + clientID + " ").getBytes();
+
+        byte[] messageBytes = buildMessage(requestHeader, requestBodyStartIdx, request);
+
+        synchronized (outboundMessageQueue) {
+            outboundMessageQueue.offer(new Message(messageBytes,nodeSocket));
+        }
+    }
+
+    public void propagateResponseWithoutClientId(byte[] request){
+        String messageContent = new String(request);
+        String[] requestParts = messageContent.split(" ");
+        String requestMethod = requestParts[0];
+        String clientIDStr = requestParts[1];
+        long clientID = Long.parseLong(clientIDStr);
+
+        int requestBodyStartIdx = requestMethod.length() + 1 + clientIDStr.length() + 1;
+
+        byte[] requestHeader = (requestMethod + " ").getBytes();
+
+        byte[] messageBytes = buildMessage(requestHeader, requestBodyStartIdx, request);
+
+        Socket clientSocket = socketMap.get(clientID);
+
+        synchronized (outboundMessageQueue) {
+            outboundMessageQueue.offer(new Message(messageBytes,clientSocket));
+        }
+    }
+
+    private byte[] buildMessage(byte[] requestHeader,int requestBodyStartIdx,byte[] request){
+        byte[] lineSeparator = System.getProperty("line.separator").getBytes();
+
+        int requestBodySize = request.length - requestBodyStartIdx;
+
+        byte[] messageBytes = new byte[requestHeader.length + requestBodySize + lineSeparator.length];
+
+        System.arraycopy(requestHeader,0,messageBytes,0,requestHeader.length);
+        System.arraycopy(request,requestBodyStartIdx,messageBytes,requestHeader.length,requestBodySize);
+        System.arraycopy(lineSeparator,0,messageBytes,requestHeader.length+requestBodySize,lineSeparator.length);
+
+        return messageBytes;
+    }
+
+
     public void startThreads()
     {
         try {

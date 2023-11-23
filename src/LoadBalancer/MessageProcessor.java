@@ -52,7 +52,29 @@ public class MessageProcessor extends NIOChannels.MessageProcessor {
     }
 
     private void sendGetResponse(String messageContent){
-            return;
+        long clientID = Long.parseLong(messageContent.split(" ")[1]);
+        String objectID = messageContent.split(" ")[2];
+
+        byte[] getResponseHeader = ("GET_RESPONSE" + " " + clientID + " " + objectID + " ").getBytes();
+        byte[] lineSeparator = System.getProperty("line.separator").getBytes();
+
+        int objectStartingIdx = getResponseHeader.length;
+        byte[] objectBytes = Arrays.copyOfRange(message.bytes, objectStartingIdx, message.bytes.length);
+
+        byte[] messageBytes = new byte[getResponseHeader.length + objectBytes.length + lineSeparator.length];
+
+        System.arraycopy(getResponseHeader,0,messageBytes,0,getResponseHeader.length);
+        System.arraycopy(objectBytes,0,messageBytes,getResponseHeader.length,objectBytes.length);
+        System.arraycopy(lineSeparator,0,messageBytes,getResponseHeader.length+objectBytes.length,lineSeparator.length);
+
+
+        Map<Long, Socket> socketMap = this.server.getSocketMap();
+        Socket clientSocket = socketMap.get(clientID);
+
+        Queue<Message> writeQueue = server.getWriteQueue();
+        synchronized (writeQueue) {
+           writeQueue.offer(new Message(messageBytes,clientSocket));
+        }
     }
 
     @Override
