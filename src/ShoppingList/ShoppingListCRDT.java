@@ -8,13 +8,13 @@ public class ShoppingListCRDT {
     Map<String, Integer> currentShoppingList;
     Map<String, Integer> delta;
 
-    ShoppingListCRDT() {
+    public ShoppingListCRDT() {
         this.shoppingList = new HashMap<>();
         this.currentShoppingList = new HashMap<>();
         this.delta = new HashMap<>();
     }
 
-    ShoppingListCRDT(Map<String, Integer> shoppingList) {
+    public ShoppingListCRDT(Map<String, Integer> shoppingList) {
         this.shoppingList = shoppingList;
         this.currentShoppingList = new HashMap<>(shoppingList);
         this.delta = new HashMap<>();
