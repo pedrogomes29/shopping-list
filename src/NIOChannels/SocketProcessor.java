@@ -28,13 +28,13 @@ public class SocketProcessor implements Runnable{
     private final Set<Socket> emptyToNonEmptySockets = new HashSet<>();
     private final Set<Socket> nonEmptyToEmptySockets = new HashSet<>();
     private final Queue<Message> outboundMessageQueue;
-    private final Map<Long, Socket> socketMap = new HashMap<>();
+    private final Map<Long, Socket> socketMap;
     private final ExecutorService processorThreadPool;
 
     private final MessageProcessorBuilder messageProcessorBuilder;
 
     public SocketProcessor(Server server, Queue<Socket> inboundSocketQueue,
-                           MessageProcessorBuilder messageProcessorBuilder, Queue<Message> outboundMessageQueue) throws IOException{
+                           MessageProcessorBuilder messageProcessorBuilder, Queue<Message> outboundMessageQueue,Map<Long, Socket> socketMap) throws IOException{
         this.inboundSocketQueue = inboundSocketQueue;
         this.outboundMessageQueue = outboundMessageQueue;
         this.readSelector = Selector.open();
@@ -42,6 +42,7 @@ public class SocketProcessor implements Runnable{
         this.server = server;
         this.processorThreadPool = Executors.newFixedThreadPool(10);
         this.messageProcessorBuilder = messageProcessorBuilder;
+        this.socketMap = socketMap;
     }
 
 

@@ -27,32 +27,18 @@ public class TokenNode {
         }
     }
 
-    public void sendPut(Long clientID,String objectID, Object object){
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        try {
-            byte[] putHeader = ("PUT" + " " + clientID + " " + objectID + " ").getBytes();
+    public void sendPut(Long clientID,String objectID, byte[] objectBytes){
+        byte[] putHeader = ("PUT" + " " + clientID + " " + objectID + " ").getBytes();
+        byte[] lineSeparator = System.getProperty("line.separator").getBytes();
+        byte[] messageBytes = new byte[putHeader.length + objectBytes.length + lineSeparator.length];
 
-            ObjectOutputStream out = new ObjectOutputStream(bos);
-            out.writeObject(object);
-            out.flush();
-            byte[] objectBytes = bos.toByteArray();
-            byte[] lineSeperator = System.getProperty("line.separator").getBytes();
-            byte[] messageBytes = new byte[putHeader.length + objectBytes.length + lineSeperator.length];
-            System.arraycopy(putHeader,0,messageBytes,0,putHeader.length);
-            System.arraycopy(objectBytes,0,messageBytes,putHeader.length,objectBytes.length);
-            System.arraycopy(lineSeperator,0,messageBytes,putHeader.length+objectBytes.length,lineSeperator.length);
-            Message message = new Message(messageBytes, this.socket);
-            synchronized (writeQueue) {
-                writeQueue.offer(message);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } finally {
-            try {
-                bos.close();
-            } catch (IOException ex) {
-                // ignore close exception
-            }
+        System.arraycopy(putHeader,0,messageBytes,0,putHeader.length);
+        System.arraycopy(objectBytes,0,messageBytes,putHeader.length,objectBytes.length);
+        System.arraycopy(lineSeparator,0,messageBytes,putHeader.length+objectBytes.length,lineSeparator.length);
+
+        Message message = new Message(messageBytes, socket);
+        synchronized (writeQueue) {
+            writeQueue.offer(message);
         }
     }
 

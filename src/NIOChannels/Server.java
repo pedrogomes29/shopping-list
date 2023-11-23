@@ -19,6 +19,10 @@ public abstract class Server
     private  Thread processorThread;
     private final Queue<Message> outboundMessageQueue;
     private final Queue<Socket> socketQueue;
+
+    private final Map<Long, Socket> socketMap;
+
+
     public Server( int port, MessageProcessorBuilder messageProcessorBuilder )
     {
         this.port = port;
@@ -26,6 +30,7 @@ public abstract class Server
         messageProcessorBuilder.setServer(this);
         this.outboundMessageQueue = new LinkedList<>();
         this.socketQueue = new ArrayBlockingQueue<>(1024);
+        this.socketMap = new HashMap<>();
     }
 
     public Queue<Message> getWriteQueue(){
@@ -33,6 +38,8 @@ public abstract class Server
     }
 
     public Queue<Socket> getSocketQueue() { return this.socketQueue; }
+
+    public Map<Long, Socket> getSocketMap() { return this.socketMap; }
 
     public void stopServer() throws InterruptedException
     {
@@ -48,7 +55,8 @@ public abstract class Server
         try {
             SocketAccepter socketAccepter = new SocketAccepter(this, socketQueue);
 
-            SocketProcessor socketProcessor = new SocketProcessor(this,socketQueue, messageProcessorBuilder,this.outboundMessageQueue);
+            SocketProcessor socketProcessor = new SocketProcessor(this,socketQueue,this.messageProcessorBuilder,
+                                                                    this.outboundMessageQueue, this.socketMap);
             accepterThread = new Thread(socketAccepter);
             processorThread = new Thread(socketProcessor);
 

@@ -36,7 +36,7 @@ public class Server extends NIOChannels.Server
                 .getAsInt();
     }
 
-    public void sendPut(Long clientID, String objectID, Object object) throws NoSuchAlgorithmException {
+    public void sendPut(Long clientID, String objectID, byte[] object) throws NoSuchAlgorithmException {
         int nrNodes = nodeHashes.size();
         String idHash = Utils.Hasher.md5(objectID);
         int firstNodeToStoreIdx = binarySearch(idHash);
