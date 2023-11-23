@@ -42,32 +42,10 @@ public class MessageProcessor extends NIOChannels.MessageProcessor {
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
-        byte[] serializedObject = Arrays.copyOfRange(message.bytes, serializedObjectStartingIdx, message.bytes.length);
-        ((Node.Server)server).getDB().insertData(hash,serializedObject);
+        byte[] serializedObjectBytes = Arrays.copyOfRange(message.bytes, serializedObjectStartingIdx, message.bytes.length);
+        ((Node.Server)server).getDB().insertData(hash,serializedObjectBytes);
 
         sendPutACK(clientID,objectID);
-
-        ByteArrayInputStream bis = new ByteArrayInputStream(serializedObject);
-        ObjectInputStream in = null;
-        try {
-            in = new ObjectInputStream(bis);
-            Object o = in.readObject();
-            System.out.println("ID: " + " " + objectID);
-            ArrayList<Integer> list = (ArrayList<Integer>) o;
-            for (Integer integer : list) System.out.println(integer);
-        }
-        catch (IOException | ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-        finally {
-            try {
-                if (in != null) {
-                    in.close();
-                }
-            } catch (IOException ex) {
-                // ignore close exception
-            }
-        }
     }
 
     @Override

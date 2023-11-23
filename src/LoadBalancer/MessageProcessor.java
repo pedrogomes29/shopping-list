@@ -45,22 +45,42 @@ public class MessageProcessor extends NIOChannels.MessageProcessor {
         byte[] objectBytes = Arrays.copyOfRange(message.bytes, objectStartingIdx, message.bytes.length);
         ((Server)server).sendPut(clientID, objectID, objectBytes);
     }
+    private void sendGet(String messageContent) throws NoSuchAlgorithmException {
+        String objectID = messageContent.split(" ")[1];
+        long clientID = message.getSocket().getSocketId();
+        ((Server)server).sendGet(clientID, objectID);
+    }
+
+    private void sendGetResponse(String messageContent){
+            return;
+    }
 
     @Override
     public void run() {
         String messageContent = new String(message.bytes);
-        if(messageContent.startsWith("ADD_NODE")) {
+        if(messageContent.startsWith("ADD_NODE ")) {
             addNode(messageContent);
         }
-        else if(messageContent.startsWith("PUT")){
+        else if(messageContent.startsWith("PUT ")){
             try {
                 sendPut(messageContent);
             } catch (NoSuchAlgorithmException e) {
                 throw new RuntimeException(e);
             }
         }
-        else if(messageContent.startsWith("PUT_ACK")){
+        else if(messageContent.startsWith("PUT_ACK ")){
             sendPutACK(messageContent);
+        }
+
+        else if(messageContent.startsWith("GET ")){
+            try {
+                sendGet(messageContent);
+            } catch (NoSuchAlgorithmException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        else if(messageContent.startsWith("GET_RESPONSE ")){
+            sendGetResponse(messageContent);
         }
     }
 }
