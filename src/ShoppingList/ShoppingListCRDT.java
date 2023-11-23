@@ -8,15 +8,15 @@ public class ShoppingListCRDT {
     Map<String, Integer> currentShoppingList;
     Map<String, Integer> delta;
 
-    ShoppingListCRDT() {
+    public ShoppingListCRDT() {
         this.shoppingList = new HashMap<>();
         this.currentShoppingList = new HashMap<>();
         this.delta = new HashMap<>();
     }
 
-    ShoppingListCRDT(Map<String, Integer> shoppingList) {
+    public ShoppingListCRDT(Map<String, Integer> shoppingList) {
         this.shoppingList = shoppingList;
-        this.currentShoppingList = shoppingList;
+        this.currentShoppingList = new HashMap<>(shoppingList);
         this.delta = new HashMap<>();
         shoppingList.forEach((item, quantity) -> {
             delta.put(item, 0);
@@ -35,22 +35,57 @@ public class ShoppingListCRDT {
         return this.delta;
     }
 
-    // TODO: default quantity = 1
     public void increment(String item, int quantity) {
-        // TODO
+        this.currentShoppingList.put(item, this.currentShoppingList.get(item) + quantity);
+        this.delta.put(item, this.delta.get(item) + quantity);
     }
 
-    // TODO: default quantity = 1
+    public void increment(String item) {
+        increment(item, 1);
+    }
+
     public void decrement(String item, int quantity) {
-        // TODO
+        if (this.currentShoppingList.get(item) < quantity) {
+            if (this.shoppingList.containsKey(item)) {
+                this.delta.put(item, -this.shoppingList.get(item));
+            } else {
+                this.delta.remove(item);
+            }
+            this.currentShoppingList.remove(item);
+        } else {
+            this.currentShoppingList.put(item, this.currentShoppingList.get(item) - quantity);
+            this.delta.put(item, this.delta.get(item) - quantity);
+        }
     }
 
-    public void add(String item, int quantity) {
-        // TODO
+    public void decrement(String item) {
+        decrement(item, 1);
     }
 
-    public void reset(String item) {
-        // TODO
+    public boolean add(String item, int quantity) {
+        if (this.currentShoppingList.containsKey(item)) {
+            return false;
+        }
+        this.currentShoppingList.put(item, quantity);
+        if (this.shoppingList.containsKey(item)) {
+            this.delta.put(item, quantity - this.shoppingList.get(item));
+        } else {
+            this.delta.put(item, quantity);
+        }
+        return true;
+    }
+
+    public boolean reset(String item) {
+        if (!this.currentShoppingList.containsKey(item)) {
+            return false;
+        }
+        if (this.shoppingList.containsKey(item)) {
+            this.delta.put(item, -this.shoppingList.get(item));
+        } else {
+            this.delta.remove(item);
+        }
+        this.currentShoppingList.remove(item);
+        return true;
     }
 
     public void join(ShoppingListCRDT shoppingList2) {
