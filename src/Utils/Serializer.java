@@ -8,22 +8,26 @@ import java.io.ByteArrayOutputStream;
 
 public class Serializer {
 
-    byte[] serialize(Object o) throws IOException {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutputStream out = new ObjectOutputStream(bos);
-        out.writeObject(o);
-        out.flush();
-        byte[] serializedObject =  bos.toByteArray();
-        bos.close();
-        return serializedObject;
+    byte[] serialize(Object o){
+        try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
+             ObjectOutputStream out = new ObjectOutputStream(bos)) {
+            out.writeObject(o);
+            out.flush();
+            return bos.toByteArray();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
-    Object deserialize(byte[] serializedObjectBytes) throws IOException, ClassNotFoundException {
-        ByteArrayInputStream bis = new ByteArrayInputStream(serializedObjectBytes);
-        ObjectInputStream in = new ObjectInputStream(bis);
-        Object o = in.readObject();
-        in.close();
-        return o;
+    Object deserialize(byte[] serializedObjectBytes){
+        try (ByteArrayInputStream bis = new ByteArrayInputStream(serializedObjectBytes);
+             ObjectInputStream in = new ObjectInputStream(bis)) {
+            return in.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
 }
