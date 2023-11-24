@@ -13,6 +13,7 @@ import java.util.Queue;
 
 import NIOChannels.Socket;
 import Utils.Hasher;
+import Utils.MessageBuilder;
 
 public class MessageProcessor extends NIOChannels.MessageProcessor {
     public MessageProcessor(NIOChannels.Server server, Message message) {
@@ -43,9 +44,27 @@ public class MessageProcessor extends NIOChannels.MessageProcessor {
             throw new RuntimeException(e);
         }
         byte[] serializedObjectBytes = Arrays.copyOfRange(message.bytes, serializedObjectStartingIdx, message.bytes.length);
-        ((Node.Server)server).getDB().insertData(hash,serializedObjectBytes);
+        ((Node.Server)server).getDB().insertData(objectID, hash, serializedObjectBytes);
 
         sendPutACK(clientID,objectID);
+    }
+
+    private void sendGetResponse(String clientID, String objectID, byte[] serializedObjectBytes){
+        Queue<Message> messageQueue = this.server.getWriteQueue();
+        byte[] responseHeader = ("GET_RESPONSE" + " " + clientID + " " + objectID + " ").getBytes();
+        byte[] messageBytes = MessageBuilder.buildMessage(responseHeader,serializedObjectBytes);
+
+        synchronized (messageQueue){
+            messageQueue.add(new Message(messageBytes,message.getSocket()));
+        }
+    }
+
+    private void receiveGet(String messageContent){
+        String[] messageContentStrings = messageContent.split(" ");
+        String clientID = messageContentStrings[1];
+        String objectID = messageContentStrings[2];
+        byte[] serializedObjectBytes = ((Node.Server)server).getDB().getShoppingList(objectID);
+        sendGetResponse(clientID, objectID, serializedObjectBytes);
     }
 
     @Override
@@ -53,6 +72,9 @@ public class MessageProcessor extends NIOChannels.MessageProcessor {
         String messageContent = new String(message.bytes);
         if(messageContent.startsWith("PUT")) {
             receivePut(messageContent);
+        }
+        if(messageContent.startsWith("GET")) {
+            receiveGet(messageContent);
         }
     }
 }

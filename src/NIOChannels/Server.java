@@ -17,11 +17,15 @@ public abstract class Server
 
     private Thread accepterThread;
     private  Thread processorThread;
-    private final Queue<Message> outboundMessageQueue;
-    private final Queue<Socket> socketQueue;
+    protected final Queue<Message> outboundMessageQueue;
+    protected final Queue<Socket> socketQueue;
 
-    private final Map<Long, Socket> socketMap;
+    protected final Map<Long, Socket> socketMap;
 
+
+    public Queue<Message> getWriteQueue(){
+        return outboundMessageQueue;
+    }
 
     public Server( int port, MessageProcessorBuilder messageProcessorBuilder )
     {
@@ -33,13 +37,6 @@ public abstract class Server
         this.socketMap = new HashMap<>();
     }
 
-    public Queue<Message> getWriteQueue(){
-        return this.outboundMessageQueue;
-    }
-
-    public Queue<Socket> getSocketQueue() { return this.socketQueue; }
-
-    public Map<Long, Socket> getSocketMap() { return this.socketMap; }
 
     public void stopServer() throws InterruptedException
     {
@@ -49,61 +46,6 @@ public abstract class Server
         processorThread.join();
 
     }
-
-    public void propagateRequestWithClientId(Message requestMsg, Socket nodeSocket){
-        long clientID = requestMsg.getSocket().getSocketId();
-
-        byte[] request = requestMsg.bytes;
-        String messageContent = new String(request);
-
-        String[] requestParts = messageContent.split(" ");
-        String requestMethod = requestParts[0];
-
-        int requestBodyStartIdx = requestMethod.length() + 1;
-
-        byte[] requestHeader = (requestMethod + " " + clientID + " ").getBytes();
-
-        byte[] messageBytes = buildMessage(requestHeader, requestBodyStartIdx, request);
-
-        synchronized (outboundMessageQueue) {
-            outboundMessageQueue.offer(new Message(messageBytes,nodeSocket));
-        }
-    }
-
-    public void propagateResponseWithoutClientId(byte[] request){
-        String messageContent = new String(request);
-        String[] requestParts = messageContent.split(" ");
-        String requestMethod = requestParts[0];
-        String clientIDStr = requestParts[1];
-        long clientID = Long.parseLong(clientIDStr);
-
-        int requestBodyStartIdx = requestMethod.length() + 1 + clientIDStr.length() + 1;
-
-        byte[] requestHeader = (requestMethod + " ").getBytes();
-
-        byte[] messageBytes = buildMessage(requestHeader, requestBodyStartIdx, request);
-
-        Socket clientSocket = socketMap.get(clientID);
-
-        synchronized (outboundMessageQueue) {
-            outboundMessageQueue.offer(new Message(messageBytes,clientSocket));
-        }
-    }
-
-    private byte[] buildMessage(byte[] requestHeader,int requestBodyStartIdx,byte[] request){
-        byte[] lineSeparator = System.getProperty("line.separator").getBytes();
-
-        int requestBodySize = request.length - requestBodyStartIdx;
-
-        byte[] messageBytes = new byte[requestHeader.length + requestBodySize + lineSeparator.length];
-
-        System.arraycopy(requestHeader,0,messageBytes,0,requestHeader.length);
-        System.arraycopy(request,requestBodyStartIdx,messageBytes,requestHeader.length,requestBodySize);
-        System.arraycopy(lineSeparator,0,messageBytes,requestHeader.length+requestBodySize,lineSeparator.length);
-
-        return messageBytes;
-    }
-
 
     public void startThreads()
     {

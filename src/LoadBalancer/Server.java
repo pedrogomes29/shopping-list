@@ -1,7 +1,12 @@
 package LoadBalancer;
 
+import NIOChannels.Message;
+import NIOChannels.Socket;
+import Utils.MessageBuilder;
+
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Random;
 
@@ -36,26 +41,58 @@ public class Server extends NIOChannels.Server
                 .getAsInt();
     }
 
-    public void sendPut(Long clientID, String objectID, byte[] object) throws NoSuchAlgorithmException {
+    public void  propagateRequestToNode(Message message) throws NoSuchAlgorithmException {
         int nrNodes = nodeHashes.size();
+        String objectID = new String(message.bytes).split(" ")[1];
         String idHash = Utils.Hasher.md5(objectID);
         int firstNodeToStoreIdx = binarySearch(idHash);
         for(int i=0;i<nrReplicas;i++){
             String nodeHash = nodeHashes.get( (firstNodeToStoreIdx+i)%nrNodes );
             TokenNode node = hashToNode.get(nodeHash);
-            node.sendPut(clientID, objectID, object);
+            propagateRequestWithClientId(message,node.getSocket());
         }
     }
 
-    public void sendGet(Long clientID,String objectID) throws NoSuchAlgorithmException {
-        int nrNodes = nodeHashes.size();
-        String idHash = Utils.Hasher.md5(objectID);
-        int firstNodeIdx = binarySearch(idHash);
-        int replicaToChoose = generateRandomNumber(firstNodeIdx,firstNodeIdx+nrReplicas);
-        String nodeHash = nodeHashes.get( replicaToChoose % nrNodes );
-        TokenNode node = hashToNode.get(nodeHash);
-        node.sendGet(clientID,objectID);
+    public void propagateRequestWithClientId(Message requestMsg, Socket nodeSocket){
+        long clientID = requestMsg.getSocket().getSocketId();
+
+        byte[] request = requestMsg.bytes;
+        String messageContent = new String(request);
+
+        String[] requestParts = messageContent.split(" ");
+        String requestMethod = requestParts[0];
+
+        int requestBodyStartIdx = requestMethod.length() + 1;
+        byte[] requestHeader = (requestMethod + " ").getBytes();
+        byte[] requestBody = Arrays.copyOfRange(request,requestBodyStartIdx,request.length);
+        byte[] messageBytes = MessageBuilder.buildMessage(requestHeader,requestBody);
+
+        synchronized (outboundMessageQueue) {
+            outboundMessageQueue.offer(new Message(messageBytes,nodeSocket));
+        }
     }
+
+    public void propagateResponseToNode(byte[] request){
+        String messageContent = new String(request);
+        String[] requestParts = messageContent.split(" ");
+        String requestMethod = requestParts[0];
+        String clientIDStr = requestParts[1];
+        long clientID = Long.parseLong(clientIDStr);
+
+        int requestBodyStartIdx = requestMethod.length() + 1 + clientIDStr.length() + 1;
+
+        byte[] requestHeader = (requestMethod + " ").getBytes();
+        byte[] requestBody = Arrays.copyOfRange(request,requestBodyStartIdx,request.length);
+        byte[] messageBytes = MessageBuilder.buildMessage(requestHeader,requestBody);
+
+        Socket clientSocket = socketMap
+                .get(clientID);
+
+        synchronized (outboundMessageQueue) {
+            outboundMessageQueue.offer(new Message(messageBytes,clientSocket));
+        }
+    }
+
 
     private int binarySearch(String hash) {
         int low = 0;
