@@ -6,7 +6,6 @@ import java.util.Scanner;
 
 import ShoppingList.ShoppingListCRDT;
 
-// TODO: display shopping list
 public class Main {
 
     private static final Scanner scan = new Scanner(System.in);
