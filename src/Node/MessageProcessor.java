@@ -2,17 +2,13 @@ package Node;
 
 import NIOChannels.Message;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.nio.channels.SocketChannel;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Queue;
 
-import NIOChannels.Socket;
+import ShoppingList.ShoppingListCRDT;
 import Utils.Hasher;
+import Utils.Serializer;
 
 public class MessageProcessor extends NIOChannels.MessageProcessor {
     public MessageProcessor(NIOChannels.Server server, Message message) {
@@ -30,22 +26,37 @@ public class MessageProcessor extends NIOChannels.MessageProcessor {
         String[] messageContentStrings = messageContent.split(" ");
         String clientID = messageContentStrings[1];
         String objectID = messageContentStrings[2];
-        int nrSpaces = 0;
-        int serializedObjectStartingIdx;
-        for(serializedObjectStartingIdx=0;serializedObjectStartingIdx<message.bytes.length && nrSpaces<3;serializedObjectStartingIdx++){
-            if(message.bytes[serializedObjectStartingIdx]==' ')
-                nrSpaces++;
-        }
-        String hash = null;
+        Object shoppingListCRDT = Serializer.deserializeBase64(messageContentStrings[3]);
+        // todo merge crdts
+
+        String hash;
         try {
             hash = Hasher.md5(objectID);
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
-        byte[] serializedObjectBytes = Arrays.copyOfRange(message.bytes, serializedObjectStartingIdx, message.bytes.length);
-        ((Node.Server)server).getDB().insertData(hash,serializedObjectBytes);
+
+        ((Node.Server)server).getDB().insertData(objectID, hash, Serializer.serializeBase64(shoppingListCRDT));
 
         sendPutACK(clientID,objectID);
+    }
+
+    private void sendGetResponse(String clientID, String objectID, String objectBase64){
+        Queue<Message> messageQueue = this.server.getWriteQueue();
+        String response = "GET_RESPONSE" + " " + clientID + " " + objectID + " " + objectBase64;
+
+        synchronized (messageQueue){
+            messageQueue.add(new Message(response,message.getSocket()));
+        }
+    }
+
+    private void receiveGet(String messageContent){
+        String[] messageContentStrings = messageContent.split(" ");
+        String clientID = messageContentStrings[1];
+        String objectID = messageContentStrings[2];
+        String serializedObjectBase64= ((Node.Server)server).getDB().getShoppingList(objectID);
+
+        sendGetResponse(clientID, objectID, serializedObjectBase64);
     }
 
     @Override
@@ -53,6 +64,9 @@ public class MessageProcessor extends NIOChannels.MessageProcessor {
         String messageContent = new String(message.bytes);
         if(messageContent.startsWith("PUT")) {
             receivePut(messageContent);
+        }
+        if(messageContent.startsWith("GET")) {
+            receiveGet(messageContent);
         }
     }
 }

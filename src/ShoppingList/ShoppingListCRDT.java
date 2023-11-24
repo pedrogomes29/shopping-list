@@ -1,9 +1,10 @@
 package ShoppingList;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ShoppingListCRDT {
+public class ShoppingListCRDT implements Serializable {
     Map<String, Integer> shoppingList;
     Map<String, Integer> currentShoppingList;
     Map<String, Integer> delta;

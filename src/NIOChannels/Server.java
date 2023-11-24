@@ -17,11 +17,15 @@ public abstract class Server
 
     private Thread accepterThread;
     private  Thread processorThread;
-    private final Queue<Message> outboundMessageQueue;
-    private final Queue<Socket> socketQueue;
+    protected final Queue<Message> outboundMessageQueue;
+    protected final Queue<Socket> socketQueue;
 
-    private final Map<Long, Socket> socketMap;
+    protected final Map<Long, Socket> socketMap;
 
+
+    public Queue<Message> getWriteQueue(){
+        return outboundMessageQueue;
+    }
 
     public Server( int port, MessageProcessorBuilder messageProcessorBuilder )
     {
@@ -33,13 +37,6 @@ public abstract class Server
         this.socketMap = new HashMap<>();
     }
 
-    public Queue<Message> getWriteQueue(){
-        return this.outboundMessageQueue;
-    }
-
-    public Queue<Socket> getSocketQueue() { return this.socketQueue; }
-
-    public Map<Long, Socket> getSocketMap() { return this.socketMap; }
 
     public void stopServer() throws InterruptedException
     {
@@ -66,6 +63,10 @@ public abstract class Server
         catch(IOException e){
             e.printStackTrace();
         }
+    }
+
+    public Queue<Socket> getSocketQueue(){
+        return this.socketQueue;
     }
 
 

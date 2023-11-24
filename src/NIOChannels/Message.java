@@ -8,7 +8,8 @@ public class Message {
         this.socket = socket;
     }
     public Message(String message,Socket socket) {
-        this.bytes = (message+System.lineSeparator()).getBytes();
+        System.out.println(message);
+        this.bytes = (message+'\n').getBytes();
         this.socket = socket;
     }
 
