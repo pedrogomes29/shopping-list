@@ -89,6 +89,36 @@ public class ShoppingListCRDT {
     }
 
     public void join(ShoppingListCRDT shoppingList2) {
-        // TODO
+        Map<String, Integer> delta2 = shoppingList2.getDelta();
+
+        // Adapt delta of shoppingList2 according to this.shoppingList if necessary
+        if (!shoppingList2.getShoppingList().equals(this.shoppingList)) {
+            shoppingList2.getDelta().forEach((item, quantity) -> {
+                Integer newQuantity = quantity + shoppingList2.getShoppingList().getOrDefault(item, 0) - this.shoppingList.getOrDefault(item, 0);
+                delta2.put(item, newQuantity);
+            });
+        }
+        for (Map.Entry<String, Integer> entry : delta2.entrySet()) {
+            String item = entry.getKey();
+            Integer quantity = entry.getValue();
+
+            if (!this.delta.containsKey(item)) {
+                this.add(item, quantity);
+            } else {
+                int newDelta, deltaOffset;
+
+                if ((this.delta.get(item) >= 0 && delta2.get(item) >= 0) || (this.delta.get(item) <= 0 && delta2.get(item) <= 0)) {
+                    newDelta = Math.max(delta2.get(item), this.delta.get(item));
+                } else {
+                    newDelta = delta2.get(item) + this.delta.get(item);
+                }
+                deltaOffset = newDelta - this.delta.get(item);
+                if (deltaOffset > 0) {
+                    this.increment(item, deltaOffset);
+                } else {
+                    this.decrement(item, Math.abs(deltaOffset));
+                }
+            }
+        }
     }
 }
