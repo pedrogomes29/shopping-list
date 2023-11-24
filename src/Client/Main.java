@@ -37,7 +37,16 @@ public class Main {
         return new ShoppingListCRDT(shoppingList);
     }
 
+    private void displayShoppingList(Map<String, Integer> shoppingList) {
+        System.out.println("This is your shopping list");
+        for (String item: shoppingList.keySet()) {
+            System.out.println(item + ": " + shoppingList.get(item));
+        }
+    }
+
     private void editList(ShoppingListCRDT shoppingListCRDT) {
+        this.displayShoppingList(shoppingListCRDT.getCurrentShoppingList());
+
         int option = -1;
         while (option != 0) {
             System.out.println("What operation would you like to do?");
@@ -45,7 +54,10 @@ public class Main {
             if (!shoppingListCRDT.getCurrentShoppingList().isEmpty()) {
                 System.out.println("2 - Remove shopping item");
                 System.out.println("3 - Edit quantity to shop for");
+                System.out.println("4 - Pull updates from cloud");
+                System.out.println("5 - Push updates to cloud");
             }
+            System.out.println("0 - Exit");
 
             option = scan.nextInt(); scan.nextLine();
             switch (option) {
@@ -66,11 +78,19 @@ public class Main {
                         option = -1;
                     }
                 }
+                case 4 -> { // TODO: pull
+                }
+                case 5 -> { // TODO: push
+                }
                 case 0 -> System.out.println("Thank you for using our system");
                 default -> {
                     System.out.println("Invalid Option");
                     option = -1;
                 }
+            }
+
+            if (option != 0 && option != -1) {
+                this.displayShoppingList(shoppingListCRDT.getCurrentShoppingList());
             }
         }
     }
