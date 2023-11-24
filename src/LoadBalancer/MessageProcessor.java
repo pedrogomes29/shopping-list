@@ -37,6 +37,6 @@ public class MessageProcessor extends NIOChannels.MessageProcessor {
         }
 
         else if(messageContent.startsWith("PUT_ACK ") || messageContent.startsWith("GET_RESPONSE "))
-            ((Server)server).propagateResponseToNode(message.bytes);
+            ((Server)server).propagateResponseToClient(message.bytes);
     }
 }

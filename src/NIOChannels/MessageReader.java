@@ -20,7 +20,7 @@ public class MessageReader {
     }
 
     public int findNextLineBreak(byte[] src,int starting_index) {
-        byte[] lineBreak = System.getProperty("line.separator").getBytes();
+        byte[] lineBreak = "\n".getBytes();
         for(int index = starting_index; index < src.length; index++){
             int lineBreakIndex = lineBreak.length-1;
             if(src[index] == lineBreak[lineBreakIndex]){
@@ -36,7 +36,7 @@ public class MessageReader {
         return -1;
     }
 
-    public void read(ByteBuffer byteBuffer) throws IOException {
+    public void read(ByteBuffer byteBuffer)  {
         byteBuffer.flip();
         byte[] src = new byte[lastMessage.length+byteBuffer.remaining()];
         System.arraycopy(lastMessage, 0, src, 0, lastMessage.length);
@@ -45,7 +45,7 @@ public class MessageReader {
         int endIndex = findNextLineBreak(src,startIndex);
         while(endIndex != -1) {
             messages.add(new Message(Arrays.copyOfRange(src, startIndex, endIndex + 1),this.socket));
-            startIndex = endIndex + System.getProperty("line.separator").getBytes().length + 1;
+            startIndex = endIndex + "\n".getBytes().length + 1;
             endIndex = findNextLineBreak(src,startIndex);
         }
         lastMessage = Arrays.copyOfRange(byteBuffer.array(), startIndex, byteBuffer.limit());

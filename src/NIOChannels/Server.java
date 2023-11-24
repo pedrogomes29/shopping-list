@@ -65,5 +65,9 @@ public abstract class Server
         }
     }
 
+    public Queue<Socket> getSocketQueue(){
+        return this.socketQueue;
+    }
+
 
 }

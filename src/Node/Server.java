@@ -19,10 +19,10 @@ public class Server extends NIOChannels.Server
 
     private Database db;
 
-    public Server( int nodePort )
+    public Server( int nodePort, String lbHost, int lbPort)
     {
         super(nodePort, new MessageProcessorBuilder());
-        connectToLB("localhost",8080);
+        connectToLB(lbHost, lbPort);
         nodeId = UUID.randomUUID().toString();
         String messageTxt = "ADD_NODE " + nodeId;
         try {

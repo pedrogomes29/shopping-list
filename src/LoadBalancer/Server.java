@@ -2,7 +2,6 @@ package LoadBalancer;
 
 import NIOChannels.Message;
 import NIOChannels.Socket;
-import Utils.MessageBuilder;
 
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -46,6 +45,7 @@ public class Server extends NIOChannels.Server
         String objectID = new String(message.bytes).split(" ")[1];
         String idHash = Utils.Hasher.md5(objectID);
         int firstNodeToStoreIdx = binarySearch(idHash);
+
         for(int i=0;i<nrReplicas;i++){
             String nodeHash = nodeHashes.get( (firstNodeToStoreIdx+i)%nrNodes );
             TokenNode node = hashToNode.get(nodeHash);
@@ -56,40 +56,37 @@ public class Server extends NIOChannels.Server
     public void propagateRequestWithClientId(Message requestMsg, Socket nodeSocket){
         long clientID = requestMsg.getSocket().getSocketId();
 
-        byte[] request = requestMsg.bytes;
-        String messageContent = new String(request);
+        String messageContent = new String(requestMsg.bytes);
 
         String[] requestParts = messageContent.split(" ");
-        String requestMethod = requestParts[0];
 
-        int requestBodyStartIdx = requestMethod.length() + 1;
-        byte[] requestHeader = (requestMethod + " ").getBytes();
-        byte[] requestBody = Arrays.copyOfRange(request,requestBodyStartIdx,request.length);
-        byte[] messageBytes = MessageBuilder.buildMessage(requestHeader,requestBody);
+        StringBuilder stringBuilder = new StringBuilder(requestParts[0] + " " + clientID);
+
+        for (int i = 1; i < requestParts.length; i++)
+            stringBuilder.append(" ").append(requestParts[i]);
 
         synchronized (outboundMessageQueue) {
-            outboundMessageQueue.offer(new Message(messageBytes,nodeSocket));
+            outboundMessageQueue.offer(new Message(stringBuilder.toString(),nodeSocket));
         }
     }
 
-    public void propagateResponseToNode(byte[] request){
+    public void propagateResponseToClient(byte[] request){
         String messageContent = new String(request);
         String[] requestParts = messageContent.split(" ");
+
+        // get client
+        long clientID = Long.parseLong(requestParts[1]);
+        Socket clientSocket = socketMap.get(clientID);
+
+        // build message without clientID
         String requestMethod = requestParts[0];
-        String clientIDStr = requestParts[1];
-        long clientID = Long.parseLong(clientIDStr);
+        StringBuilder stringBuilder = new StringBuilder(requestMethod);
 
-        int requestBodyStartIdx = requestMethod.length() + 1 + clientIDStr.length() + 1;
-
-        byte[] requestHeader = (requestMethod + " ").getBytes();
-        byte[] requestBody = Arrays.copyOfRange(request,requestBodyStartIdx,request.length);
-        byte[] messageBytes = MessageBuilder.buildMessage(requestHeader,requestBody);
-
-        Socket clientSocket = socketMap
-                .get(clientID);
+        for (int i = 2; i < requestParts.length; i++)
+            stringBuilder.append(" ").append(requestParts[i]);
 
         synchronized (outboundMessageQueue) {
-            outboundMessageQueue.offer(new Message(messageBytes,clientSocket));
+            outboundMessageQueue.offer(new Message(stringBuilder.toString(),clientSocket));
         }
     }
 

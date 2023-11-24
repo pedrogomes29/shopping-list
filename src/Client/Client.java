@@ -10,6 +10,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Queue;
 
@@ -28,7 +29,7 @@ public class Client {
         try{
             socketToLB = new Socket();
             socketToLB.connect(address);
-            socketToLB.setSoTimeout(5000);
+            socketToLB.setSoTimeout(100000);
 
             socketOutput = socketToLB.getOutputStream();
             socketInput = socketToLB.getInputStream();
@@ -37,7 +38,7 @@ public class Client {
         }
     }
 
-    public boolean pushList(ShoppingListCRDT crdt, String id) {
+    public boolean pushList(Object crdt, String id) {
         String message = "PUT " + id + " " + Serializer.serializeBase64(crdt) + "\n";
 
         try {
@@ -45,7 +46,7 @@ public class Client {
             socketOutput.write(message.getBytes());
 
             // recv socket confirmation
-            String serverResponse = readLine(socketInput, 10000);
+            String serverResponse = readLine(100000);
 
             // Check if the server response is THE ACK
             return serverResponse.equals("PUT_ACK " + id);
@@ -55,13 +56,13 @@ public class Client {
         }
 
     }
-    public String readLine(InputStream inputStream, long timeout) throws IOException {
+    public String readLine(long timeout) throws IOException {
         StringBuilder response = new StringBuilder();
 
         long limitTime = System.currentTimeMillis() + timeout; // 10 seconds timeout
         int c;
 
-        while (System.currentTimeMillis() < limitTime && (c = socketInput.read()) > 0) {
+        while (System.currentTimeMillis() < limitTime && (c = socketInput.read()) >= 0) {
             char character = (char) c;
             if (character == '\n') {
                 return response.toString();
@@ -72,7 +73,7 @@ public class Client {
         return null;
     }
 
-    public ShoppingListCRDT getList(String id) {
+    public Object getList(String id) {
         byte[] getmessageBytes = ("GET " + id + "\n").getBytes();
 
         try {
@@ -80,17 +81,21 @@ public class Client {
             socketOutput.write(getmessageBytes);
 
             // recv crdt
-            String serverResponse = readLine(socketInput, 10000);
+            while (true) {
+                String serverResponse = readLine(10000);
 
-            String[] response = serverResponse.split(" ");
+                String[] response = serverResponse.split(" ");
 
-            if(!response[0].equals("GET_RESPONSE") || !response[1].equals(id))
-                return null;
+                if (!response[0].equals("GET_RESPONSE") || !response[1].equals(id))
+                    continue;
+                else {
+                    Object returnedObject = Serializer.deserializeBase64(response[2]);
 
-            Object returnedObject = Serializer.deserializeBase64(response[2]);
-
-            if (returnedObject instanceof ShoppingListCRDT)
-                return (ShoppingListCRDT) returnedObject;
+                    if (returnedObject instanceof Object)
+                        return returnedObject;
+                    break;
+                }
+            }
 
             return null;
         } catch (IOException e) {
@@ -98,6 +103,23 @@ public class Client {
             return null;
         }
 
+    }
+
+    public static void main(String[] args) {
+        Client client = new Client();
+
+        client.connectToCloud("127.0.0.1", 8080);
+
+        ShoppingListCRDT listCRDT = new ShoppingListCRDT();
+        listCRDT.add("bicicleta", 1);
+
+        boolean sended = client.pushList(listCRDT, "listadorui");
+
+        ShoppingListCRDT response = (ShoppingListCRDT)client.getList("lista");
+
+        for(String key : response.getCurrentShoppingList().keySet()){
+            System.out.println(key + " " + response.getCurrentShoppingList().get(key));
+        }
     }
 
 }
