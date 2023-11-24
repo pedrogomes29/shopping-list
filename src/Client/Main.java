@@ -1,5 +1,7 @@
 package Client;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
@@ -13,8 +15,9 @@ public class Main {
     private void createShoppingList() {
         System.out.println("What name should we give to your shopping list?");
         String listName = scan.nextLine();
-        // TODO: create unique link
-        String listLink = listName; // TODO: remove
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+        LocalDateTime now = LocalDateTime.now();
+        String listLink = listName + "-" + dtf.format(now); // TODO: check cloud for repeated link
         System.out.println("From now on you can access this list by providing the following link " + listLink);
         this.editList(new ShoppingListCRDT());
     }
@@ -37,7 +40,11 @@ public class Main {
     }
 
     private void displayShoppingList(Map<String, Integer> shoppingList) {
-        System.out.println("This is your shopping list");
+        if (shoppingList.isEmpty()) {
+            System.out.println("\nYour shopping list is currently empty");
+        } else {
+            System.out.println("\nThis is your shopping list");
+        }
         for (String item: shoppingList.keySet()) {
             System.out.println(item + ": " + shoppingList.get(item));
         }
@@ -48,7 +55,7 @@ public class Main {
 
         int option = -1;
         while (option != 0) {
-            System.out.println("What operation would you like to do?");
+            System.out.println("\nWhat operation would you like to do?");
             System.out.println("1 - Add shopping item");
             if (!shoppingListCRDT.getCurrentShoppingList().isEmpty()) {
                 System.out.println("2 - Remove shopping item");
@@ -65,7 +72,7 @@ public class Main {
                     if (!shoppingListCRDT.getCurrentShoppingList().isEmpty()) {
                         this.removeListItem(shoppingListCRDT);
                     } else {
-                        System.out.println("Empty list! Invalid Option");
+                        System.out.println("\nEmpty list! Invalid Option");
                         option = -1;
                     }
                 }
@@ -73,7 +80,7 @@ public class Main {
                     if (!shoppingListCRDT.getCurrentShoppingList().isEmpty()) {
                         this.updateListItemQuantity(shoppingListCRDT);
                     } else {
-                        System.out.println("Empty list! Invalid Option");
+                        System.out.println("\nEmpty list! Invalid Option");
                         option = -1;
                     }
                 }
@@ -81,9 +88,9 @@ public class Main {
                 }
                 case 5 -> { // TODO: push
                 }
-                case 0 -> System.out.println("Thank you for using our system");
+                case 0 -> System.out.println("\nThank you for using our system");
                 default -> {
-                    System.out.println("Invalid Option");
+                    System.out.println("\nInvalid Option");
                     option = -1;
                 }
             }
@@ -92,10 +99,11 @@ public class Main {
                 this.displayShoppingList(shoppingListCRDT.getCurrentShoppingList());
             }
         }
+        // TODO: save local copy
     }
 
     private void addListItem(ShoppingListCRDT shoppingListCRDT) {
-        System.out.println("What's the name of the item you wish to add to the list?");
+        System.out.println("\nWhat's the name of the item you wish to add to the list?");
         String item = scan.nextLine();
         if (shoppingListCRDT.getCurrentShoppingList().containsKey(item)) {
             System.out.println("This item is already on the list");
@@ -115,7 +123,7 @@ public class Main {
     }
 
     private void removeListItem(ShoppingListCRDT shoppingListCRDT) {
-        System.out.println("What's the name of the item you wish to remove from the list?");
+        System.out.println("\nWhat's the name of the item you wish to remove from the list?");
         String item = scan.nextLine();
         if (!shoppingListCRDT.getCurrentShoppingList().containsKey(item)) {
             System.out.println("This item isn't on the list");
@@ -127,7 +135,7 @@ public class Main {
     }
 
     private void updateListItemQuantity(ShoppingListCRDT shoppingListCRDT) {
-        System.out.println("What's the name of the item whose quantity you wish to update?");
+        System.out.println("\nWhat's the name of the item whose quantity you wish to update?");
         String item = scan.nextLine();
         if (!shoppingListCRDT.getCurrentShoppingList().containsKey(item)) {
             System.out.println("This item isn't on the list");
