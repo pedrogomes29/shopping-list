@@ -101,6 +101,8 @@ public class Client {
     }
 
     public static void main(String[] args) {
+
+        // usado apenas para testar o client
         Client client = new Client();
 
         client.connectToCloud("127.0.0.1", 8080);
