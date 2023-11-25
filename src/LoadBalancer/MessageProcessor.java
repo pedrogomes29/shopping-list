@@ -23,7 +23,7 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
         String messageContent = new String(message.bytes);
         if(messageContent.startsWith("PUT ") || messageContent.startsWith("GET ")){
             try {
-                return server.propagateRequestToNode(message);
+                return server.consistentHashing.propagateRequestToNode(message);
             } catch (NoSuchAlgorithmException e) {
                 throw new RuntimeException(e);
             }

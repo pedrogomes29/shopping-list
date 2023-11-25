@@ -9,19 +9,22 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class Gossiper implements Runnable{
 
+    private static final int rumour_count = 3;
     private static int nrNeighborsToGossipTo = 2;
 
     private static int nrSecondsBetweenGossipRounds = 1;
 
     private final Set<Socket> neighbors;
-    private Map<String,Integer> rumours;
+    private final Map<String,Integer> rumours;
     private final Queue<Message> writeQueue;
     private final Server server;
+    protected final Set<String> neighborIDs;
 
 
-    public Gossiper(Server server, Set<Socket> neighbors, Map<String,Integer> rumours, Queue<Message> writeQueue){
-        this.neighbors = neighbors;
-        this.rumours = rumours;
+    public Gossiper(Server server, Queue<Message> writeQueue){
+        this.neighbors = new HashSet<>();
+        this.neighborIDs = new HashSet<>();
+        this.rumours = new HashMap<>();
         this.writeQueue = writeQueue;
         this.server = server;
     }
@@ -51,6 +54,34 @@ public class Gossiper implements Runnable{
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    public void addNeighbor(Socket neighbor){
+        synchronized (this.neighbors) {
+            neighbors.add(neighbor);
+        }
+    }
+
+    public void addRumour(String newRumour){
+        rumours.put(newRumour,rumour_count);
+    }
+
+    public Map<String, Integer> getRumours(){
+        return rumours;
+    }
+
+    public Set<Socket> getNeighbors() {
+        return neighbors;
+    }
+
+    public Set<String> getNeighborIDs() {
+        return neighborIDs;
+    }
+
+    public void addNeighborID(String nodeId) {
+        synchronized (neighborIDs) {
+            neighborIDs.add(nodeId);
         }
     }
 }

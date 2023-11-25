@@ -1,4 +1,4 @@
-package LoadBalancer;
+package Node.ConsistentHashing;
 
 import Node.Socket.Socket;
 

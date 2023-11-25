@@ -1,6 +1,6 @@
 package Node.Message;
 
-import LoadBalancer.TokenNode;
+import Node.ConsistentHashing.TokenNode;
 import Node.Gossiper.ALREADY_SEEN_RUMOUR;
 import Node.Server;
 import Node.Socket.Socket;
@@ -68,16 +68,16 @@ public abstract class MessageProcessor implements Runnable {
             firstOneConnected = true;
         }
 
-
-
         try {
             if(Objects.equals(method, "ADD_NODE")){
                 if (!server.knowsAboutRingNode(newNodeID)){
                     Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
-                    server.addNodeToRing(new TokenNode(socketToNewNode,newNodeID));
+                    TokenNode tokenNode = new TokenNode(socketToNewNode,newNodeID);
+                    if (server.consistentHashing.addNodeToRing(tokenNode))
+                        server.gossiper.addNeighbor(tokenNode.getSocket());
+
                     sendMessageToNewNode(socketToNewNode);
                 }
-
 
             }
             else if(Objects.equals(method, "ADD_LB")){
@@ -100,7 +100,7 @@ public abstract class MessageProcessor implements Runnable {
     public void receiveNewNode(String newNodeMessage){
         String newNodeID = newNodeMessage.split(" ")[1];
         try {
-            server.addNodeToRing(new TokenNode(message.getSocket(),newNodeID));
+            server.consistentHashing.addNodeToRing(new TokenNode(message.getSocket(),newNodeID));
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
@@ -140,11 +140,11 @@ public abstract class MessageProcessor implements Runnable {
         }
 
         String rumourACK;
-        if(server.getRumours().containsKey(rumour) || alreadyReceivedRumour){
+        if(server.gossiper.getRumours().containsKey(rumour) || alreadyReceivedRumour){
             rumourACK = "RUMOUR_ACK" + " " + ALREADY_SEEN_RUMOUR.TRUE + " " + rumour;
         }
         else{
-            server.addRumour(newrumour);
+            server.gossiper.addRumour(newrumour);
             rumourACK = "RUMOUR_ACK" + " " + ALREADY_SEEN_RUMOUR.FALSE + " " + rumour;
         }
 
@@ -159,12 +159,12 @@ public abstract class MessageProcessor implements Runnable {
         boolean alreadySeenRumour =rumourACKParts[0].equals("1");
         if(alreadySeenRumour){
             String rumour =  rumourACKParts[1];
-            int rumourCount = server.getRumours().getOrDefault(rumour, -1);
+            int rumourCount = server.gossiper.getRumours().getOrDefault(rumour, -1);
             rumourCount--;
             if(rumourCount<=0)
-                server.getRumours().remove(rumour);
+                server.gossiper.getRumours().remove(rumour);
             else
-                server.getRumours().put(rumour,rumourCount);
+                server.gossiper.getRumours().put(rumour,rumourCount);
         }
     }
 
