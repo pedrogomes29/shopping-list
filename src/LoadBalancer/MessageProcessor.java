@@ -24,6 +24,7 @@ public class MessageProcessor extends NIOChannels.MessageProcessor {
     }
     @Override
     public void run() {
+        super.run();
         String messageContent = new String(message.bytes);
         if(messageContent.startsWith("ADD_NODE ")) {
             addNode(messageContent);

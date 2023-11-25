@@ -1,64 +1,51 @@
 package Node;
 
+import LoadBalancer.TokenNode;
 import NIOChannels.Message;
 import NIOChannels.Socket;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.sql.SQLException;
-import java.util.Queue;
-import java.util.UUID;
+import java.util.*;
+
 import Database.Database;
 
 public class Server extends NIOChannels.Server
 {
 
-    private Socket socketToLB;
-    private String nodeId;
-
+    private ArrayList<String> nodeHashes;
+    private HashMap<String, TokenNode> hashToNode;
     private Database db;
 
-    public Server( int nodePort, String lbHost, int lbPort)
+    public Server( int nodePort )
     {
         super(nodePort, new MessageProcessorBuilder());
-        connectToLB(lbHost, lbPort);
-        nodeId = UUID.randomUUID().toString();
-        String messageTxt = "ADD_NODE " + nodeId;
+        nodeHashes = new ArrayList<>();
+        hashToNode = new HashMap<>();
         try {
             db = new Database("database/"+nodeId+".db");
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-        sendMessageToLB(messageTxt);
     }
 
-
-    public void connectToLB(String LBHost, int LBPort ){
-        SocketChannel socketChannelToLB;
-        InetSocketAddress address = new InetSocketAddress(LBHost, LBPort);
-        Queue<Socket> socketQueue = this.getSocketQueue();
-
-        try{
-            socketChannelToLB = SocketChannel.open();
-            socketChannelToLB.connect(address);
-            socketToLB = new Socket(socketChannelToLB);
-            synchronized (socketQueue){
-                socketQueue.add(socketToLB);
-            }
-        } catch(IOException e){
-            e.printStackTrace();
+    public void startGossip(Socket socketToGossipTo){
+        Message gossipMessage = new Message("ADD_NODE " + nodeId,socketToGossipTo);
+        synchronized (outboundMessageQueue){
+            outboundMessageQueue.add(gossipMessage);
         }
     }
+
+
+
+
 
     public Database getDB(){
         return db;
-    }
-    public void sendMessageToLB(String message){
-        Queue<Message> writeQueue = this.getWriteQueue();
-        synchronized (writeQueue) {
-            writeQueue.add(new Message(message, socketToLB));
-        }
     }
 
 

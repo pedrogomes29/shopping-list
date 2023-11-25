@@ -61,11 +61,12 @@ public class MessageProcessor extends NIOChannels.MessageProcessor {
 
     @Override
     public void run() {
+        super.run();
         String messageContent = new String(message.bytes);
-        if(messageContent.startsWith("PUT")) {
+        if(messageContent.startsWith("PUT ")) {
             receivePut(messageContent);
         }
-        if(messageContent.startsWith("GET")) {
+        if(messageContent.startsWith("GET ")) {
             receiveGet(messageContent);
         }
     }
