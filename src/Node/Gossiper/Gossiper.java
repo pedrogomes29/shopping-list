@@ -1,12 +1,11 @@
-package NIOChannels;
+package Node.Gossiper;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
+import Node.Message.Message;
+import Node.Server;
+import Node.Socket.Socket;
+
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public class Gossiper implements Runnable{
 
@@ -14,13 +13,13 @@ public class Gossiper implements Runnable{
 
     private static int nrSecondsBetweenGossipRounds = 1;
 
-    private ArrayList<Socket> neighbors;
+    private final Set<Socket> neighbors;
     private Map<String,Integer> rumours;
     private final Queue<Message> writeQueue;
     private final Server server;
 
 
-    public Gossiper(Server server, ArrayList<Socket> neighbors, Map<String,Integer> rumours, Queue<Message> writeQueue){
+    public Gossiper(Server server, Set<Socket> neighbors, Map<String,Integer> rumours, Queue<Message> writeQueue){
         this.neighbors = neighbors;
         this.rumours = rumours;
         this.writeQueue = writeQueue;
@@ -30,11 +29,14 @@ public class Gossiper implements Runnable{
     @Override
     public void run() {
         while(server.running) {
-            ArrayList<Socket> neighborsCopy = new ArrayList<>(neighbors);
+            ArrayList<Socket> neighborsCopy;
+            synchronized (neighbors){
+                neighborsCopy = new ArrayList<>(neighbors);
+            }
 
             for (int i = 0; i < nrNeighborsToGossipTo && !neighborsCopy.isEmpty(); i++) {
                 int neighborToGossipToIdx = ThreadLocalRandom.current().nextInt(0, neighborsCopy.size());
-                Socket neighborToGossipTo = neighbors.get(neighborToGossipToIdx);
+                Socket neighborToGossipTo = neighborsCopy.get(neighborToGossipToIdx);
                 for (String rumour : rumours.keySet()) {
                     synchronized (writeQueue) {
                         writeQueue.add(new Message("RUMOUR" + " " + rumour, neighborToGossipTo));

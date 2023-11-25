@@ -1,4 +1,7 @@
-package NIOChannels;
+package Node.Socket;
+
+import Node.Message.MessageReader;
+import Node.Message.MessageWriter;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -9,7 +12,7 @@ public class Socket {
     public boolean endOfStreamReached;
     public SocketChannel socketChannel;
     public MessageReader messageReader;
-    public MessageWriter  messageWriter;
+    public MessageWriter messageWriter;
 
     public Socket(SocketChannel socketChannel) {
         this.socketChannel = socketChannel;
@@ -51,5 +54,9 @@ public class Socket {
 
     public long getSocketId(){
         return this.socketId;
+    }
+
+    public void setSocketId(long socketId) {
+        this.socketId = socketId;
     }
 }

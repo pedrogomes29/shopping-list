@@ -1,6 +1,7 @@
-package NIOChannels;
+package Node.Message;
 
-import java.io.IOException;
+import Node.Socket.Socket;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,7 +9,7 @@ import java.util.List;
 
 public class MessageReader {
 
-    List<Message> messages;
+    public List<Message> messages;
     Socket socket;
 
     byte[] lastMessage;

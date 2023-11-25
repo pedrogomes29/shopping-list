@@ -1,4 +1,7 @@
-package NIOChannels;
+package Node.Socket;
+import Node.Server;
+import Node.Socket.Socket;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;

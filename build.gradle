@@ -18,14 +18,19 @@ sourceSets {
     }
 }
 
-tasks.register('runLoadBalancer', JavaExec) {
+tasks.register('LoadBalancer', JavaExec) {
     main = 'LoadBalancer.Main'
     classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath
     standardInput = System.in
 }
 
-tasks.register('runNode', JavaExec) {
-    main = 'Node.Main'
+tasks.register('Node', JavaExec) {
+    main = 'RingNode.Main'
     classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath
     args project.hasProperty('port') ? [project.port] : []
+}
+
+tasks.register('Client', JavaExec) {
+    main = 'Client.Client'
+    classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath
 }

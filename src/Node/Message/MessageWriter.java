@@ -1,4 +1,6 @@
-package NIOChannels;
+package Node.Message;
+
+import Node.Socket.Socket;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

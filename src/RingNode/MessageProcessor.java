@@ -1,17 +1,15 @@
-package Node;
+package RingNode;
 
-import NIOChannels.Message;
+import Node.Message.Message;
 
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 import java.util.Queue;
 
-import ShoppingList.ShoppingListCRDT;
 import Utils.Hasher;
 import Utils.Serializer;
 
-public class MessageProcessor extends NIOChannels.MessageProcessor {
-    public MessageProcessor(NIOChannels.Server server, Message message) {
+public class MessageProcessor extends Node.Message.MessageProcessor {
+    public MessageProcessor(Node.Server server, Message message) {
         super(server, message);
     }
 
@@ -36,7 +34,7 @@ public class MessageProcessor extends NIOChannels.MessageProcessor {
             throw new RuntimeException(e);
         }
 
-        ((Node.Server)server).getDB().insertData(objectID, hash, Serializer.serializeBase64(shoppingListCRDT));
+        ((RingNode.Server)server).getDB().insertData(objectID, hash, Serializer.serializeBase64(shoppingListCRDT));
 
         sendPutACK(clientID,objectID);
     }
@@ -54,7 +52,7 @@ public class MessageProcessor extends NIOChannels.MessageProcessor {
         String[] messageContentStrings = messageContent.split(" ");
         String clientID = messageContentStrings[1];
         String objectID = messageContentStrings[2];
-        String serializedObjectBase64= ((Node.Server)server).getDB().getShoppingList(objectID);
+        String serializedObjectBase64= ((RingNode.Server)server).getDB().getShoppingList(objectID);
 
         sendGetResponse(clientID, objectID, serializedObjectBase64);
     }

@@ -1,12 +1,12 @@
 package LoadBalancer;
 
-import NIOChannels.Message;
+import Node.Message.Message;
 
 import java.security.NoSuchAlgorithmException;
 
 
-public class MessageProcessor extends NIOChannels.MessageProcessor {
-    public MessageProcessor(NIOChannels.Server server, Message message) {
+public class MessageProcessor extends Node.Message.MessageProcessor {
+    public MessageProcessor(Node.Server server, Message message) {
         super(server, message);
     }
 

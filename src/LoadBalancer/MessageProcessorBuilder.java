@@ -1,8 +1,8 @@
 package LoadBalancer;
 
-import NIOChannels.Message;
+import Node.Message.Message;
 
-public class MessageProcessorBuilder extends NIOChannels.MessageProcessorBuilder {
+public class MessageProcessorBuilder extends Node.Message.MessageProcessorBuilder {
 
     @Override
     public MessageProcessor build(Message message) {
