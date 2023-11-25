@@ -6,7 +6,7 @@ public class MessageProcessorBuilder extends Node.Message.MessageProcessorBuilde
 
     @Override
     public MessageProcessor build(Message message) {
-        return new MessageProcessor(server,message);
+        return new MessageProcessor((Server) server,message);
     }
 
 }

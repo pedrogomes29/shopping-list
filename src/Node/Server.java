@@ -20,12 +20,15 @@ import java.security.NoSuchAlgorithmException;
 
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ThreadLocalRandom;
 
 
 public abstract class Server
 {
     public final int port;
+    public final int nrReplicas;
 
     public boolean running = true;
 
@@ -45,8 +48,8 @@ public abstract class Server
 
     protected final Map<Long, Socket> socketMap;
 
-    private final ArrayList<String> nodeHashes;
-    private final HashMap<String,TokenNode> hashToNode;
+    protected final ArrayList<String> nodeHashes;
+    protected final HashMap<String,TokenNode> hashToNode;
 
     protected String nodeId;
 
@@ -60,12 +63,13 @@ public abstract class Server
         return outboundMessageQueue;
     }
 
-    public Server(int port, MessageProcessorBuilder messageProcessorBuilder ) throws IOException {
+    public Server(int port, int nrReplicas, MessageProcessorBuilder messageProcessorBuilder ) throws IOException {
         this.port = port;
+        this.nrReplicas = nrReplicas;
         messageProcessorBuilder.setServer(this);
         this.outboundMessageQueue = new LinkedList<>();
         this.socketQueue = new ArrayBlockingQueue<>(1024);
-        this.socketMap = new HashMap<>();
+        this.socketMap = new ConcurrentHashMap<>();
         this.neighbors = new HashSet<>();
         this.nodeId = UUID.randomUUID().toString();
         this.rumours = new HashMap<>();
@@ -106,7 +110,7 @@ public abstract class Server
         return hashToNode.get(nodeIdHash);
     }
 
-    private int binarySearch(String hash) {
+    protected int binarySearch(String hash) {
         int low = 0;
         int high = nodeHashes.size() - 1;
 
@@ -213,5 +217,44 @@ public abstract class Server
     public boolean containsNode(String nodeId) throws NoSuchAlgorithmException {
         String nodeIdHash = Hasher.md5(nodeId);
         return hashToNode.containsKey(nodeIdHash) || nodeId.equals(this.nodeId);
+    }
+
+    /**
+     * Propagates a request to the appropriate node using consistent hashing
+     *
+     * @param message The message containing the request and object ID.
+     * @return The socket of the selected node to handle the request.
+     * @throws NoSuchAlgorithmException If the required hashing algorithm is not available.
+     */
+    public Socket propagateRequestToNode(Message message) throws NoSuchAlgorithmException {
+        int nrNodes = nodeHashes.size();
+        String objectID = new String(message.bytes).split(" ")[1];
+        String idHash = Utils.Hasher.md5(objectID);
+        int firstNodeToStoreIdx = binarySearch(idHash);
+
+        int randomChoice = ThreadLocalRandom.current().nextInt(firstNodeToStoreIdx, nrReplicas);
+        String nodeHash = nodeHashes.get(randomChoice%nrNodes );
+        TokenNode node = hashToNode.get(nodeHash);
+        return node.getSocket();
+    }
+
+
+    public boolean isObjectReplica(String nodeId, String objectId) throws NoSuchAlgorithmException {
+        int nrNodes = nodeHashes.size();
+        String objectHash = Utils.Hasher.md5(objectId);
+        String nodeHash = Utils.Hasher.md5(nodeId);
+        int firstNodeToStoreIdx = binarySearch(objectHash);
+
+        for (int i = 0; i < nrReplicas; i++){
+            int idx = (firstNodeToStoreIdx+i)%nrNodes;
+            if(nodeHashes.get(idx).equals(nodeHash))
+                return true;
+        }
+
+        return false;
+    }
+
+    public Map<Long, Socket> getSocketMap(){
+        return socketMap;
     }
 }

@@ -8,6 +8,7 @@ import Node.Socket.Socket;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.Queue;
 
 public abstract class MessageProcessor implements Runnable {
@@ -142,6 +143,78 @@ public abstract class MessageProcessor implements Runnable {
         }
         else if(messageContent.startsWith("ADD_NODE ")) {
             receiveNewNode(messageContent);
+        }else if(messageContent.startsWith("PUT ") || messageContent.startsWith("GET ")){
+            receivePutGet(message);
+        }else if(messageContent.startsWith("PUT_ACK")){
+            receiveACK(messageContent, 2);
+        }else if(messageContent.startsWith("GET_ACK")){
+            receiveACK(messageContent, 3);
+        }
+    }
+
+    /**
+     * Receives an ACK message and processes it, considering the specified message format.
+     *
+     * @param messageContent The content of the received message.
+     * @param dataLength The expected number of components in the message (splits with spaces) without redirects.
+     *                   For "put" operations, dataLength is 2; for "get" operations, it is 3.
+     */
+    private void receiveACK(String messageContent, int dataLength) {
+        String[] messageParts = messageContent.split(" ");
+
+        if (messageParts.length > dataLength){
+            String redirectSocketID = messageParts[messageParts.length-1];
+            Socket redirectSocket = server.getSocketMap().get(Long.parseLong(redirectSocketID));
+
+            Queue<Message> messageQueue = this.server.getWriteQueue();
+
+            // redirect the message to the socket
+            String[] messagesWithoutRedirect =Arrays.copyOfRange(messageParts, 0, messageParts.length - 1);
+            String messageContentWithoutRedirect = String.join(" ", messagesWithoutRedirect);
+
+            Message message = new Message(messageContentWithoutRedirect, redirectSocket);
+            synchronized (messageQueue) {
+                messageQueue.offer(message);
+            }
+
+        }else {
+            throw new RuntimeException("ACK MESSAGE WITHOUT REDIRECT");
+        }
+    }
+
+    private void receivePutGet(Message message){
+        Socket socketToRedirect = isToRedirectMessage(message);
+        if (socketToRedirect == null){
+            String messageContent = new String(message.bytes);
+            this.redirectMessage(messageContent, message.getSocket(), socketToRedirect);
+        }
+    }
+
+    /**
+     * Checks if the received message is a PUT or GET request and determines if redirection is necessary.
+     * If redirection is needed, it propagates the request to the appropriate node.
+     *
+     * @param message The received message.
+     * @return The socket to which the message should be redirected, or null if no redirection is required.
+     */
+    protected abstract Socket isToRedirectMessage(Message message);
+
+
+    /**
+     * Redirects a message to a specified node and appends the original socket ID to the end of the message.
+     * This allows the response to travel back to the origin node.
+     *
+     * @param messageContent The content of the message to be redirected.
+     * @param socket The original socket from which the message was received.
+     * @param nodeToRedirect The socket of the node to which the message should be redirected.
+     */
+    private void redirectMessage(String messageContent, Socket socket, Socket nodeToRedirect){
+        Queue<Message> messageQueue = this.server.getWriteQueue();
+
+        // redirect message but save the socket id to not lose the connection to send the ack when receive the response
+        Message message = new Message(messageContent + " " + socket.getSocketId(), nodeToRedirect);
+        synchronized (messageQueue) {
+            messageQueue.offer(message);
         }
     }
 }

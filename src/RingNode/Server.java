@@ -13,8 +13,8 @@ public class Server extends Node.Server
 
     private final Database db;
 
-    public Server( int nodePort ) throws IOException {
-        super(nodePort, new MessageProcessorBuilder());
+    public Server( int nodePort, int nReplicas ) throws IOException {
+        super(nodePort, nReplicas, new MessageProcessorBuilder());
         try {
             db = new Database("database/"+nodeId+".db");
         } catch (SQLException e) {

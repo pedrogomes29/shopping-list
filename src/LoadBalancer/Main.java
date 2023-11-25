@@ -10,7 +10,7 @@ import java.util.Scanner;
 // then press Enter. You can now see whitespace characters in your code.
 public class Main {
     public static void main(String[] args) throws IOException {
-        Server server = new Server(8080);
+        Server server = new Server(8080, 3);
         server.startThreads();
 
         Scanner scanner = new Scanner(System.in);
