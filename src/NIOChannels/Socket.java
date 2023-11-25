@@ -52,4 +52,8 @@ public class Socket {
     public long getSocketId(){
         return this.socketId;
     }
+
+    public void setSocketId(long socketId) {
+        this.socketId = socketId;
+    }
 }

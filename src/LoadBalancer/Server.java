@@ -3,6 +3,7 @@ package LoadBalancer;
 import NIOChannels.Message;
 import NIOChannels.Socket;
 
+import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,8 +18,7 @@ public class Server extends NIOChannels.Server
 
     int nrReplicas;
 
-    public Server( int port )
-    {
+    public Server( int port ) throws IOException {
         super(port, new MessageProcessorBuilder());
         nodeHashes = new ArrayList<>();
         hashToNode = new HashMap<>();

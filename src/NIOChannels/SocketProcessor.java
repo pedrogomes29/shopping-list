@@ -5,12 +5,14 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.Selector;
 import java.nio.channels.SelectionKey;
+import java.nio.channels.SocketChannel;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.Iterator;
@@ -18,9 +20,11 @@ import java.util.List;
 
 public class SocketProcessor implements Runnable{
     private final Queue<Socket> inboundSocketQueue;
-    private long nextSocketId = 16 * 1024;
+    private long nextSocketId = 0;
     private final Selector readSelector;
     private final Selector writeSelector;
+
+    private final Selector connectorSelector;
     private final Server server;
 
     private final ByteBuffer readByteBuffer  = ByteBuffer.allocate(1024 * 1024);
@@ -28,6 +32,7 @@ public class SocketProcessor implements Runnable{
     private final Set<Socket> emptyToNonEmptySockets = new HashSet<>();
     private final Set<Socket> nonEmptyToEmptySockets = new HashSet<>();
     private final Queue<Message> outboundMessageQueue;
+
     private final Map<Long, Socket> socketMap;
     private final ExecutorService processorThreadPool;
 
@@ -39,6 +44,7 @@ public class SocketProcessor implements Runnable{
         this.outboundMessageQueue = outboundMessageQueue;
         this.readSelector = Selector.open();
         this.writeSelector = Selector.open();
+        this.connectorSelector = Selector.open();
         this.server = server;
         this.processorThreadPool = Executors.newFixedThreadPool(10);
         this.messageProcessorBuilder = messageProcessorBuilder;
@@ -58,11 +64,12 @@ public class SocketProcessor implements Runnable{
     }
 
 
-    public void executeCycle() throws IOException {
+    private void executeCycle() throws IOException {
         takeNewSockets();
         readFromSockets();
         writeToSockets();
     }
+
 
     public void takeNewSockets() throws IOException {
 
@@ -72,8 +79,9 @@ public class SocketProcessor implements Runnable{
         }
         while(newSocket != null){
             newSocket.socketChannel.configureBlocking(false);
-
+            newSocket.setSocketId(++nextSocketId);
             this.socketMap.put(newSocket.getSocketId(), newSocket);
+
 
             SelectionKey key = newSocket.socketChannel.register(this.readSelector, SelectionKey.OP_READ);
             key.attach(newSocket);

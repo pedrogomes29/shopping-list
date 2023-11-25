@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.sql.SQLException;
+import java.util.Map;
 import java.util.Queue;
 import java.util.UUID;
 import Database.Database;
@@ -19,8 +20,7 @@ public class Server extends NIOChannels.Server
 
     private Database db;
 
-    public Server( int nodePort, String lbHost, int lbPort)
-    {
+    public Server( int nodePort, String lbHost, int lbPort) throws IOException {
         super(nodePort, new MessageProcessorBuilder());
         connectToLB(lbHost, lbPort);
         nodeId = UUID.randomUUID().toString();
@@ -54,7 +54,7 @@ public class Server extends NIOChannels.Server
     public Database getDB(){
         return db;
     }
-    public void sendMessageToLB(String message){
+        public void sendMessageToLB(String message){
         Queue<Message> writeQueue = this.getWriteQueue();
         synchronized (writeQueue) {
             writeQueue.add(new Message(message, socketToLB));

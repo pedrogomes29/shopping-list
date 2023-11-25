@@ -1,18 +1,11 @@
 package Client;
 
-
 import ShoppingList.ShoppingListCRDT;
 import Utils.Serializer;
-import jdk.jshell.spi.ExecutionControl;
 
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Queue;
 
 public class Client {
     private Socket socketToLB;
@@ -73,7 +66,7 @@ public class Client {
         return null;
     }
 
-    public Object getList(String id) {
+    public ShoppingListCRDT getList(String id) {
         byte[] getmessageBytes = ("GET " + id + "\n").getBytes();
 
         try {
@@ -86,13 +79,15 @@ public class Client {
 
                 String[] response = serverResponse.split(" ");
 
-                if (!response[0].equals("GET_RESPONSE") || !response[1].equals(id))
-                    continue;
-                else {
+                if (response[0].equals("GET_RESPONSE") && response[1].equals(id)) {
+
+                    if (response[2].equals("null"))
+                        return null;
+
                     Object returnedObject = Serializer.deserializeBase64(response[2]);
 
-                    if (returnedObject instanceof Object)
-                        return returnedObject;
+                    if (returnedObject instanceof ShoppingListCRDT)
+                        return (ShoppingListCRDT) returnedObject;
                     break;
                 }
             }
@@ -115,7 +110,13 @@ public class Client {
 
         boolean sended = client.pushList(listCRDT, "listadorui");
 
-        ShoppingListCRDT response = (ShoppingListCRDT)client.getList("lista");
+        String listaName = "lista";
+        ShoppingListCRDT response = client.getList(listaName);
+
+        if (response == null){
+            System.out.println("List " + listaName + "doenst exists");
+            return;
+        }
 
         for(String key : response.getCurrentShoppingList().keySet()){
             System.out.println(key + " " + response.getCurrentShoppingList().get(key));
