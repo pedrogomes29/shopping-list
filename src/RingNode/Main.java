@@ -5,8 +5,16 @@ import java.io.IOException;
 public class Main {
 
     public static void main(String[] args) throws IOException {
-        int port =  Integer.parseInt(args[0]);
-        Server server = new Server(port, 3);
+        boolean debug = false;
+        int port = 100;
+        String confFile = "conf.txt";
+        if (!debug){
+            port =  Integer.parseInt(args[0]);
+            confFile =  args[1];
+
+        }
+
+        Server server = new Server("conf/" + confFile, port, 3);
         server.startThreads();
     }
 }

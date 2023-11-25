@@ -13,7 +13,6 @@ import Utils.Hasher;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.security.NoSuchAlgorithmException;
@@ -53,17 +52,20 @@ public abstract class Server
 
     protected String nodeId;
 
-
     private final SocketProcessor socketProcessor;
     private final SocketAccepter socketAccepter;
     private final Gossiper gossiper;
     private final Set<Socket> neighbors;
 
+    protected final Set<String> neighborIDs;
+
+
     public Queue<Message> getWriteQueue(){
         return outboundMessageQueue;
     }
 
-    public Server(int port, int nrReplicas, MessageProcessorBuilder messageProcessorBuilder ) throws IOException {
+
+    public Server(String confFilePath, int port,int nrReplicas, MessageProcessorBuilder messageProcessorBuilder ) throws IOException {
         this.port = port;
         this.nrReplicas = nrReplicas;
         messageProcessorBuilder.setServer(this);
@@ -71,6 +73,7 @@ public abstract class Server
         this.socketQueue = new ArrayBlockingQueue<>(1024);
         this.socketMap = new ConcurrentHashMap<>();
         this.neighbors = new HashSet<>();
+        this.neighborIDs = new HashSet<>();
         this.nodeId = UUID.randomUUID().toString();
         this.rumours = new HashMap<>();
         this.nodeHashes = new ArrayList<>();
@@ -83,10 +86,7 @@ public abstract class Server
 
         gossiper = new Gossiper(this,this.neighbors,this.rumours,this.outboundMessageQueue);
 
-        nodeHashes.add(nodeId);
-
-        addRumour("ADD_NODE " + nodeId + " " + port );
-        connectToNeighborsFromConf("conf/conf.txt");
+        connectToNeighborsFromConf(confFilePath);
     }
 
     public synchronized void addNodeToRing(TokenNode nodeId) throws NoSuchAlgorithmException {
@@ -214,9 +214,22 @@ public abstract class Server
         return rumours;
     }
 
-    public boolean containsNode(String nodeId) throws NoSuchAlgorithmException {
-        String nodeIdHash = Hasher.md5(nodeId);
-        return hashToNode.containsKey(nodeIdHash) || nodeId.equals(this.nodeId);
+    public boolean knowsAboutRingNode(String nodeID) throws NoSuchAlgorithmException {
+        String nodeIDHash = Hasher.md5(nodeID);
+        return hashToNode.containsKey(nodeIDHash) || nodeID.equals(this.nodeId);
+    }
+
+    public void addLBNode(Socket socket,String socketID){
+        synchronized (neighbors){
+            neighbors.add(socket);
+        }
+        synchronized (neighborIDs){
+            neighborIDs.add(socketID);
+        }
+    }
+
+    public boolean knowsAboutLBNode(String socketID){
+        return neighborIDs.contains(socketID);
     }
 
     /**
@@ -232,7 +245,9 @@ public abstract class Server
         String idHash = Utils.Hasher.md5(objectID);
         int firstNodeToStoreIdx = binarySearch(idHash);
 
-        int randomChoice = ThreadLocalRandom.current().nextInt(firstNodeToStoreIdx, nrReplicas);
+        int randomChoice = ThreadLocalRandom.current().nextInt(firstNodeToStoreIdx, firstNodeToStoreIdx+nrReplicas-1);
+
+        System.out.println("Random " + randomChoice + " total " + firstNodeToStoreIdx);
         String nodeHash = nodeHashes.get(randomChoice%nrNodes );
         TokenNode node = hashToNode.get(nodeHash);
         return node.getSocket();
@@ -244,9 +259,13 @@ public abstract class Server
         String objectHash = Utils.Hasher.md5(objectId);
         String nodeHash = Utils.Hasher.md5(nodeId);
         int firstNodeToStoreIdx = binarySearch(objectHash);
+        System.out.println("objectHash: " + objectHash);
+        System.out.println("nodeHash: " + nodeHash);
 
         for (int i = 0; i < nrReplicas; i++){
             int idx = (firstNodeToStoreIdx+i)%nrNodes;
+
+            System.out.println( idx + " - " + nodeHashes.get(idx));
             if(nodeHashes.get(idx).equals(nodeHash))
                 return true;
         }

@@ -109,14 +109,17 @@ public class Client {
 
         ShoppingListCRDT listCRDT = new ShoppingListCRDT();
         listCRDT.add("bicicleta", 1);
+        listCRDT.add("predro", 2);
 
         boolean sended = client.pushList(listCRDT, "listadorui");
 
-        String listaName = "lista";
+        System.out.println("Sendend" + sended);
+
+        String listaName = "listadopedro";
         ShoppingListCRDT response = client.getList(listaName);
 
         if (response == null){
-            System.out.println("List " + listaName + "doenst exists");
+            System.out.println("List " + listaName + " doenst exists");
             return;
         }
 

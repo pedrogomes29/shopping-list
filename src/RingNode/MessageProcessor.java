@@ -25,7 +25,7 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
         Queue<Message> messageQueue = this.server.getWriteQueue();
 
         String ackMessage = addRedirects("PUT_ACK " + objectID, messageParts, 3);
-
+        System.out.println("Message " + ackMessage);
         Message putAckMessage = new Message(ackMessage,message.getSocket());
         synchronized (messageQueue){
             messageQueue.add(putAckMessage);
@@ -36,6 +36,7 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
         String objectID = messageContentParts[1];
         Object shoppingListCRDT = Serializer.deserializeBase64(messageContentParts[2]);
         // todo merge crdts
+        System.out.println("merge crdts");
 
         String hash;
         try {
@@ -77,6 +78,7 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
 
         try {
             if(server.isObjectReplica(this.server.getNodeId(), objectID)){
+                System.out.println("e replica");
                 switch (messageType){
                     case "PUT":
                         receivePut(message, messageContentParts);
@@ -86,6 +88,13 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
                         break;
                     default:
                         throw new RuntimeException("MessageType unknown " + messageType);
+                }
+            }else {
+                System.out.println("nao e");
+                try {
+                    return server.propagateRequestToNode(message);
+                } catch (NoSuchAlgorithmException e) {
+                    throw new RuntimeException(e);
                 }
             }
         } catch (NoSuchAlgorithmException e) {

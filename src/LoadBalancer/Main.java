@@ -1,16 +1,23 @@
 package LoadBalancer;
-
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Objects;
 import java.util.Scanner;
 
 // Press Shift twice to open the Search Everywhere dialog and type `show whitespaces`,
 // then press Enter. You can now see whitespace characters in your code.
 public class Main {
     public static void main(String[] args) throws IOException {
-        Server server = new Server(8080, 3);
+
+        boolean debug = true;
+        int port = 8080;
+        String confFile = "conf1.txt";
+        if (!debug){
+            port =  Integer.parseInt(args[0]);
+            confFile =  args[1];
+
+        }
+
+        Server server = new Server("conf/" + confFile, port, 3);
+
         server.startThreads();
 
         Scanner scanner = new Scanner(System.in);

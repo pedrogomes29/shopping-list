@@ -11,7 +11,6 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
         super(server, message);
     }
 
-
     /**
      * Determines whether the received message is a PUT or GET request and identifies the node for
      * redirection (using consistent hasing).

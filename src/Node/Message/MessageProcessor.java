@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Queue;
 
 public abstract class MessageProcessor implements Runnable {
@@ -19,6 +20,31 @@ public abstract class MessageProcessor implements Runnable {
     public MessageProcessor(Server server, Message message){
         this.server = server;
         this.message = message;
+    }
+
+    public void sendMessageToNewNode(Socket socketToNewNode){
+        String messageContentToNewNode = "";
+        System.out.println(this.getClass());
+        if (this instanceof LoadBalancer.MessageProcessor)
+            messageContentToNewNode = "ADD_LB" + " " + server.getNodeId();
+        else if(this instanceof RingNode.MessageProcessor)
+            messageContentToNewNode = "ADD_NODE" + " " + server.getNodeId();
+
+        if(!messageContentToNewNode.isEmpty()) {
+            Queue<Message> messageQueue = this.server.getWriteQueue();
+
+            synchronized (messageQueue) {
+                messageQueue.add(new Message(messageContentToNewNode, socketToNewNode));
+            }
+        }
+
+    }
+
+    private Socket getNewNodeSocket(String host, int port, boolean firstOneConnected){
+        if (firstOneConnected)
+            return this.message.getSocket();
+        else
+            return server.connect(host, port);
     }
 
     public String receiveNewNodeWithEndpoint(String newNodeMessage) throws IOException {
@@ -42,24 +68,26 @@ public abstract class MessageProcessor implements Runnable {
             firstOneConnected = true;
         }
 
+
+
         try {
-            if (!server.containsNode(newNodeID)){
-                Socket socketToNewNode;
-                if (firstOneConnected)
-                    socketToNewNode = this.message.getSocket();
-                else
-                    socketToNewNode = server.connect(newNodeHost, newNodePort);
+            if(Objects.equals(method, "ADD_NODE")){
+                if (!server.knowsAboutRingNode(newNodeID)){
+                    Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
+                    server.addNodeToRing(new TokenNode(socketToNewNode,newNodeID));
+                    sendMessageToNewNode(socketToNewNode);
+                }
 
-                server.addNodeToRing(new TokenNode(socketToNewNode,newNodeID));
 
-                String messageContentToNewNode = "ADD_NODE" + " " + server.getNodeId();
-
-                Queue<Message> messageQueue = this.server.getWriteQueue();
-
-                synchronized (messageQueue){
-                    messageQueue.add(new Message(messageContentToNewNode,socketToNewNode));
+            }
+            else if(Objects.equals(method, "ADD_LB")){
+                if (!server.knowsAboutLBNode(newNodeID)){
+                    Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
+                    server.addLBNode(socketToNewNode,newNodeID);
+                    sendMessageToNewNode(socketToNewNode);
                 }
             }
+
 
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
@@ -78,16 +106,30 @@ public abstract class MessageProcessor implements Runnable {
         }
     }
 
+    public void receiveNewLB(String newNodeMessage){
+        String newNodeID = newNodeMessage.split(" ")[1];
+        server.addLBNode(message.getSocket(),newNodeID);
+    }
+
+
 
     public void receiveRumour(String rumour){
         Socket rumourSender = message.getSocket();
         Queue<Message> messageQueue = this.server.getWriteQueue();
         boolean alreadyReceivedRumour = false;
         String newrumour = rumour;
-        if(rumour.startsWith("ADD_NODE ")){
+        boolean addRingNodeRumour = rumour.startsWith("ADD_NODE ");
+        boolean addLBNodeRumour = rumour.startsWith("ADD_LB ");
+
+        if(addRingNodeRumour || addLBNodeRumour){
             try {
                 String nodeID = rumour.split(" ")[1];
-                alreadyReceivedRumour = server.containsNode(nodeID);
+
+                if(addRingNodeRumour)
+                    alreadyReceivedRumour = server.knowsAboutRingNode(nodeID);
+                else
+                    alreadyReceivedRumour = server.knowsAboutLBNode(nodeID);
+
 
                 newrumour = receiveNewNodeWithEndpoint(rumour);
 
@@ -143,12 +185,14 @@ public abstract class MessageProcessor implements Runnable {
         }
         else if(messageContent.startsWith("ADD_NODE ")) {
             receiveNewNode(messageContent);
+        }else if(messageContent.startsWith("ADD_LB ")) {
+            receiveNewLB(messageContent);
         }else if(messageContent.startsWith("PUT ") || messageContent.startsWith("GET ")){
             receivePutGet(message);
         }else if(messageContent.startsWith("PUT_ACK")){
-            receiveACK(messageContent, 2);
-        }else if(messageContent.startsWith("GET_ACK")){
-            receiveACK(messageContent, 3);
+            receiveReply(messageContent, 2);
+        }else if(messageContent.startsWith("GET_RESPONSE")){
+            receiveReply(messageContent, 3);
         }
     }
 
@@ -159,7 +203,7 @@ public abstract class MessageProcessor implements Runnable {
      * @param dataLength The expected number of components in the message (splits with spaces) without redirects.
      *                   For "put" operations, dataLength is 2; for "get" operations, it is 3.
      */
-    private void receiveACK(String messageContent, int dataLength) {
+    private void receiveReply(String messageContent, int dataLength) {
         String[] messageParts = messageContent.split(" ");
 
         if (messageParts.length > dataLength){
@@ -184,7 +228,7 @@ public abstract class MessageProcessor implements Runnable {
 
     private void receivePutGet(Message message){
         Socket socketToRedirect = isToRedirectMessage(message);
-        if (socketToRedirect == null){
+        if (socketToRedirect != null){
             String messageContent = new String(message.bytes);
             this.redirectMessage(messageContent, message.getSocket(), socketToRedirect);
         }
@@ -216,5 +260,7 @@ public abstract class MessageProcessor implements Runnable {
         synchronized (messageQueue) {
             messageQueue.offer(message);
         }
+
+
     }
 }
