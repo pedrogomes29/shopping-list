@@ -2,7 +2,7 @@
 
 ## Running the Load Balancer
 ```
-gradlew --console=plain runLoadBalancer
+gradlew runLoadBalancer --console=plain -Pport=8080
 ```
 
 ## Running a node

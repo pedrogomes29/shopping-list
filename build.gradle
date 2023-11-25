@@ -22,15 +22,17 @@ tasks.register('LoadBalancer', JavaExec) {
     main = 'LoadBalancer.Main'
     classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath
     standardInput = System.in
+    args project.port, project.filePath
 }
 
 tasks.register('Node', JavaExec) {
     main = 'RingNode.Main'
     classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath
-    args project.hasProperty('port') ? [project.port] : []
+    args project.port, project.filePath
 }
 
 tasks.register('Client', JavaExec) {
     main = 'Client.Client'
     classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath
+    standardInput = System.in
 }

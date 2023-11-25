@@ -45,33 +45,41 @@ public abstract class Server
 
     protected final Map<Long, Socket> socketMap;
 
-    private final ArrayList<String> nodeHashes;
-    private final HashMap<String,TokenNode> hashToNode;
+    protected final ArrayList<String> nodeHashes;
+    protected final HashMap<String,TokenNode> hashToNode;
 
     protected String nodeId;
 
+    protected int nrReplicas;
 
     private final SocketProcessor socketProcessor;
     private final SocketAccepter socketAccepter;
     private final Gossiper gossiper;
     private final Set<Socket> neighbors;
 
+    protected final Set<String> neighborIDs;
+
+
     public Queue<Message> getWriteQueue(){
         return outboundMessageQueue;
     }
 
-    public Server(int port, MessageProcessorBuilder messageProcessorBuilder ) throws IOException {
+    public Server(String confFilePath, int port, MessageProcessorBuilder messageProcessorBuilder ) throws IOException {
         this.port = port;
         messageProcessorBuilder.setServer(this);
         this.outboundMessageQueue = new LinkedList<>();
         this.socketQueue = new ArrayBlockingQueue<>(1024);
         this.socketMap = new HashMap<>();
         this.neighbors = new HashSet<>();
+        this.neighborIDs = new HashSet<>();
         this.nodeId = UUID.randomUUID().toString();
         this.rumours = new HashMap<>();
         this.nodeHashes = new ArrayList<>();
         this.hashToNode = new HashMap<>();
         this.connectionQueue = new ConcurrentLinkedQueue<>();
+
+
+        this.nrReplicas = 3;
 
         socketProcessor = new SocketProcessor(this,socketQueue, messageProcessorBuilder,
                 this.outboundMessageQueue, this.socketMap, this.connectionQueue);
@@ -79,10 +87,7 @@ public abstract class Server
 
         gossiper = new Gossiper(this,this.neighbors,this.rumours,this.outboundMessageQueue);
 
-        nodeHashes.add(nodeId);
-
-        addRumour("ADD_NODE " + nodeId + " " + port );
-        connectToNeighborsFromConf("conf/conf.txt");
+        connectToNeighborsFromConf(confFilePath);
     }
 
     public synchronized void addNodeToRing(TokenNode nodeId) throws NoSuchAlgorithmException {
@@ -210,8 +215,21 @@ public abstract class Server
         return rumours;
     }
 
-    public boolean containsNode(String nodeId) throws NoSuchAlgorithmException {
-        String nodeIdHash = Hasher.md5(nodeId);
-        return hashToNode.containsKey(nodeIdHash) || nodeId.equals(this.nodeId);
+    public boolean knowsAboutRingNode(String nodeID) throws NoSuchAlgorithmException {
+        String nodeIDHash = Hasher.md5(nodeID);
+        return hashToNode.containsKey(nodeIDHash) || nodeID.equals(this.nodeId);
+    }
+
+    public void addLBNode(Socket socket,String socketID){
+        synchronized (neighbors){
+            neighbors.add(socket);
+        }
+        synchronized (neighborIDs){
+            neighborIDs.add(socketID);
+        }
+    }
+
+    public boolean knowsAboutLBNode(String socketID){
+        return neighborIDs.contains(socketID);
     }
 }

@@ -13,8 +13,12 @@ public class Server extends Node.Server
 
     private final Database db;
 
-    public Server( int nodePort ) throws IOException {
-        super(nodePort, new MessageProcessorBuilder());
+    public Server(String confFilePath, int nodePort ) throws IOException {
+        super(confFilePath, nodePort, new MessageProcessorBuilder());
+
+        nodeHashes.add(nodeId);
+        addRumour("ADD_NODE" + " " + nodeId + " " + port );
+
         try {
             db = new Database("database/"+nodeId+".db");
         } catch (SQLException e) {

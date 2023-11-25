@@ -11,25 +11,10 @@ import java.util.Random;
 
 public class Server extends Node.Server
 {
-
-    ArrayList<String> nodeHashes;
-    HashMap<String,TokenNode> hashToNode;
-
-    int nrReplicas;
-
-    public Server( int port ) throws IOException {
-        super(port, new MessageProcessorBuilder());
-        nodeHashes = new ArrayList<>();
-        hashToNode = new HashMap<>();
-        nrReplicas = 3;
-    }
-
-    public void addNodeToRing(TokenNode nodeId) throws NoSuchAlgorithmException {
-        String nodeIdHash = nodeId.getHash();
-        hashToNode.put(nodeIdHash,nodeId);
-        int positionToInsert = binarySearch(nodeIdHash);
-        nodeHashes.add(positionToInsert,nodeIdHash);
-        for (String nodeHash : nodeHashes) System.out.println(nodeHash);
+    public Server(String confFilePath, int port ) throws IOException {
+        super(confFilePath, port, new MessageProcessorBuilder());
+        neighborIDs.add(this.nodeId);
+        addRumour("ADD_LB" + " " + nodeId + " " + port );
     }
 
     public static int generateRandomNumber(int min, int max) {

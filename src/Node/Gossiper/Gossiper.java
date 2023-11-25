@@ -29,6 +29,7 @@ public class Gossiper implements Runnable{
     @Override
     public void run() {
         while(server.running) {
+            System.out.println("Nr Neighbors: " + neighbors.size());
             ArrayList<Socket> neighborsCopy;
             synchronized (neighbors){
                 neighborsCopy = new ArrayList<>(neighbors);
