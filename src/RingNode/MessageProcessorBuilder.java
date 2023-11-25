@@ -1,8 +1,8 @@
 package RingNode;
 
-import Node.Message.Message;
+import NioChannels.Message.Message;
 
-public class MessageProcessorBuilder extends Node.Message.MessageProcessorBuilder {
+public class MessageProcessorBuilder extends NioChannels.Message.MessageProcessorBuilder {
 
     @Override
     public MessageProcessor build(Message message) {

@@ -1,7 +1,7 @@
 package LoadBalancer;
 
-import Node.Message.Message;
-import Node.Socket.Socket;
+import NioChannels.Message.Message;
+import NioChannels.Socket.Socket;
 
 import java.security.NoSuchAlgorithmException;
 
@@ -23,7 +23,7 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
         String messageContent = new String(message.bytes);
         if(messageContent.startsWith("PUT ") || messageContent.startsWith("GET ")){
             try {
-                return server.consistentHashing.propagateRequestToNode(message);
+                return getServer().consistentHashing.propagateRequestToNode(message);
             } catch (NoSuchAlgorithmException e) {
                 throw new RuntimeException(e);
             }

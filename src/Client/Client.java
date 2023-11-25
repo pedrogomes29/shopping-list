@@ -111,11 +111,11 @@ public class Client {
         listCRDT.add("bicicleta", 1);
         listCRDT.add("predro", 2);
 
-        boolean sended = client.pushList(listCRDT, "listadopedro");
+        boolean sended = client.pushList(listCRDT, "listadorui");
 
         System.out.println("Sendend" + sended);
 
-        String listaName = "listadorui";
+        String listaName = "listadopedro";
         ShoppingListCRDT response = client.getList(listaName);
 
         if (response == null){

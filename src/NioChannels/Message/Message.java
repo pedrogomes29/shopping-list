@@ -1,6 +1,6 @@
-package Node.Message;
+package NioChannels.Message;
 
-import Node.Socket.Socket;
+import NioChannels.Socket.Socket;
 
 public class Message {
     private final Socket socket;

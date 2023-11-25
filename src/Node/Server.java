@@ -1,87 +1,41 @@
 package Node;
 
 
-import Node.ConsistentHashing.TokenNode;
 import Node.ConsistentHashing.ConsistentHashing;
 import Node.Gossiper.Gossiper;
-import Node.Message.Message;
-import Node.Message.MessageProcessorBuilder;
-import Node.Socket.Socket;
-import Node.Socket.SocketAccepter;
-import Node.Socket.SocketProcessor;
+import NioChannels.Message.MessageProcessorBuilder;
+import NioChannels.Socket.Socket;
 import Utils.Hasher;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
 import java.security.NoSuchAlgorithmException;
 
 import java.util.*;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ThreadLocalRandom;
 
 
-public abstract class Server
+public abstract class Server extends NioChannels.Server
 {
-    public final int port;
     protected String nodeId;
-    public boolean running = true;
-
-    protected final Map<Long, Socket> socketMap;
-    private final SocketProcessor socketProcessor;
-    private final SocketAccepter socketAccepter;
-
-    // Threads
-    private Thread accepterThread;
-    private Thread processorThread;
-    private Thread gossiperThread;
-
-    // Queues
-    protected final Queue<Message> outboundMessageQueue;
-    protected final Queue<Socket> socketQueue;
-    protected final Queue<Socket> connectionQueue;
-
     public final ConsistentHashing consistentHashing;
     public final Gossiper gossiper;
-
-    public Queue<Message> getWriteQueue(){
-        return outboundMessageQueue;
-    }
-
+    private Thread gossiperThread;
 
     public Server(String confFilePath, int port,int nrReplicas, MessageProcessorBuilder messageProcessorBuilder ) throws IOException {
-        this.port = port;
-        messageProcessorBuilder.setServer(this);
-        this.outboundMessageQueue = new LinkedList<>();
-        this.socketQueue = new ArrayBlockingQueue<>(1024);
-        this.socketMap = new ConcurrentHashMap<>();
+        super(port, messageProcessorBuilder);
 
         this.nodeId = UUID.randomUUID().toString();
         this.consistentHashing = new ConsistentHashing(nrReplicas);
-        this.connectionQueue = new ConcurrentLinkedQueue<>();
-
-        socketProcessor = new SocketProcessor(this,socketQueue, messageProcessorBuilder,
-                this.outboundMessageQueue, this.socketMap, this.connectionQueue);
-        socketAccepter = new SocketAccepter(this, socketQueue);
-
         gossiper = new Gossiper(this, this.outboundMessageQueue);
 
         connectToNeighborsFromConf(confFilePath);
     }
 
-
-
-
     public void stopServer() throws InterruptedException
     {
-        running = false;
-        accepterThread.interrupt();
-        accepterThread.join();
-        processorThread.join();
+        super.stopServer();
         gossiperThread.interrupt();
         gossiperThread.join();
 
@@ -89,12 +43,8 @@ public abstract class Server
 
     public void startThreads()
     {
-        accepterThread = new Thread(socketAccepter);
-        processorThread = new Thread(socketProcessor);
+        super.startThreads();
         gossiperThread = new Thread(gossiper);
-
-        accepterThread.start();
-        processorThread.start();
         gossiperThread.start();
 
     }
@@ -120,29 +70,11 @@ public abstract class Server
         }
     }
 
-    public Socket connect(String host, int port){
-        return connect(new InetSocketAddress(host, port));
-    }
-
     public Socket connect(InetSocketAddress inetSocketAddress) {
-        try {
-            System.out.println("Connect :" + inetSocketAddress.toString());
-            SocketChannel socketChannel = SocketChannel.open();
-            socketChannel.configureBlocking(false);
-            socketChannel.connect(inetSocketAddress);
-
-            Socket socket = new Socket(socketChannel);
-
-            connectionQueue.offer(socket);
-
+        Socket socket = super.connect(inetSocketAddress);
+        if (socket != null)
             gossiper.addNeighbor(socket);
-
-            return socket;
-
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
+        return socket;
     }
 
     public String getNodeId() {
@@ -163,7 +95,4 @@ public abstract class Server
         return gossiper.getNeighborIDs().contains(socketID);
     }
 
-    public Map<Long, Socket> getSocketMap(){
-        return socketMap;
-    }
 }

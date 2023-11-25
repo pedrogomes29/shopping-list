@@ -1,6 +1,6 @@
 package Node.ConsistentHashing;
 
-import Node.Socket.Socket;
+import NioChannels.Socket.Socket;
 
 import java.security.NoSuchAlgorithmException;
 

@@ -1,11 +1,11 @@
 package RingNode;
 
-import Node.Message.Message;
+import NioChannels.Message.Message;
 
 import java.security.NoSuchAlgorithmException;
 import java.util.Queue;
 
-import Node.Socket.Socket;
+import NioChannels.Socket.Socket;
 import Utils.Hasher;
 import Utils.Serializer;
 
@@ -77,7 +77,7 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
         String objectID = messageContentParts[1];
 
         try {
-            if(server.consistentHashing.isObjectReplica(this.server.getNodeId(), objectID)){
+            if(getServer().consistentHashing.isObjectReplica(getServer().getNodeId(), objectID)){
                 System.out.println("e replica");
                 switch (messageType){
                     case "PUT":
@@ -92,7 +92,7 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
             }else {
                 System.out.println("nao e");
                 try {
-                    return server.consistentHashing.propagateRequestToNode(message);
+                    return getServer().consistentHashing.propagateRequestToNode(message);
                 } catch (NoSuchAlgorithmException e) {
                     throw new RuntimeException(e);
                 }

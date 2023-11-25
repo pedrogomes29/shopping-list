@@ -1,9 +1,9 @@
-package Node.Socket;
-import Node.Message.Message;
-import Node.Message.MessageProcessor;
-import Node.Message.MessageProcessorBuilder;
-import Node.Message.MessageWriter;
-import Node.Server;
+package NioChannels.Socket;
+import NioChannels.Message.Message;
+import NioChannels.Message.MessageProcessor;
+import NioChannels.Message.MessageProcessorBuilder;
+import NioChannels.Message.MessageWriter;
+import NioChannels.Server;
 
 import java.io.IOException;
 import java.net.SocketException;

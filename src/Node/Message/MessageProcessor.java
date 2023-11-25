@@ -1,9 +1,10 @@
 package Node.Message;
 
+import NioChannels.Message.Message;
 import Node.ConsistentHashing.TokenNode;
 import Node.Gossiper.ALREADY_SEEN_RUMOUR;
 import Node.Server;
-import Node.Socket.Socket;
+import NioChannels.Socket.Socket;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -12,32 +13,32 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.Queue;
 
-public abstract class MessageProcessor implements Runnable {
-    protected Server server;
-    protected Message message;
-
+public abstract class MessageProcessor extends NioChannels.Message.MessageProcessor {
 
     public MessageProcessor(Server server, Message message){
-        this.server = server;
-        this.message = message;
+        super(server, message);
     }
 
     public void sendMessageToNewNode(Socket socketToNewNode){
         String messageContentToNewNode = "";
         System.out.println(this.getClass());
         if (this instanceof LoadBalancer.MessageProcessor)
-            messageContentToNewNode = "ADD_LB" + " " + server.getNodeId();
+            messageContentToNewNode = "ADD_LB" + " " + getServer().getNodeId();
         else if(this instanceof RingNode.MessageProcessor)
-            messageContentToNewNode = "ADD_NODE" + " " + server.getNodeId();
+            messageContentToNewNode = "ADD_NODE" + " " + getServer().getNodeId();
 
         if(!messageContentToNewNode.isEmpty()) {
-            Queue<Message> messageQueue = this.server.getWriteQueue();
+            Queue<Message> messageQueue = getServer().getWriteQueue();
 
             synchronized (messageQueue) {
                 messageQueue.add(new Message(messageContentToNewNode, socketToNewNode));
             }
         }
 
+    }
+
+    protected Server getServer(){
+        return  (Server) server;
     }
 
     private Socket getNewNodeSocket(String host, int port, boolean firstOneConnected){
@@ -70,20 +71,20 @@ public abstract class MessageProcessor implements Runnable {
 
         try {
             if(Objects.equals(method, "ADD_NODE")){
-                if (!server.knowsAboutRingNode(newNodeID)){
+                if (!getServer().knowsAboutRingNode(newNodeID)){
                     Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
                     TokenNode tokenNode = new TokenNode(socketToNewNode,newNodeID);
-                    if (server.consistentHashing.addNodeToRing(tokenNode))
-                        server.gossiper.addNeighbor(tokenNode.getSocket());
+                    if (getServer().consistentHashing.addNodeToRing(tokenNode))
+                        getServer().gossiper.addNeighbor(tokenNode.getSocket());
 
                     sendMessageToNewNode(socketToNewNode);
                 }
 
             }
             else if(Objects.equals(method, "ADD_LB")){
-                if (!server.knowsAboutLBNode(newNodeID)){
+                if (!getServer().knowsAboutLBNode(newNodeID)){
                     Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
-                    server.addLBNode(socketToNewNode,newNodeID);
+                    getServer().addLBNode(socketToNewNode,newNodeID);
                     sendMessageToNewNode(socketToNewNode);
                 }
             }
@@ -100,7 +101,7 @@ public abstract class MessageProcessor implements Runnable {
     public void receiveNewNode(String newNodeMessage){
         String newNodeID = newNodeMessage.split(" ")[1];
         try {
-            server.consistentHashing.addNodeToRing(new TokenNode(message.getSocket(),newNodeID));
+            getServer().consistentHashing.addNodeToRing(new TokenNode(message.getSocket(),newNodeID));
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
@@ -108,7 +109,7 @@ public abstract class MessageProcessor implements Runnable {
 
     public void receiveNewLB(String newNodeMessage){
         String newNodeID = newNodeMessage.split(" ")[1];
-        server.addLBNode(message.getSocket(),newNodeID);
+        getServer().addLBNode(message.getSocket(),newNodeID);
     }
 
 
@@ -126,9 +127,9 @@ public abstract class MessageProcessor implements Runnable {
                 String nodeID = rumour.split(" ")[1];
 
                 if(addRingNodeRumour)
-                    alreadyReceivedRumour = server.knowsAboutRingNode(nodeID);
+                    alreadyReceivedRumour = getServer().knowsAboutRingNode(nodeID);
                 else
-                    alreadyReceivedRumour = server.knowsAboutLBNode(nodeID);
+                    alreadyReceivedRumour = getServer().knowsAboutLBNode(nodeID);
 
 
                 newrumour = receiveNewNodeWithEndpoint(rumour);
@@ -140,11 +141,11 @@ public abstract class MessageProcessor implements Runnable {
         }
 
         String rumourACK;
-        if(server.gossiper.getRumours().containsKey(rumour) || alreadyReceivedRumour){
+        if(getServer().gossiper.getRumours().containsKey(rumour) || alreadyReceivedRumour){
             rumourACK = "RUMOUR_ACK" + " " + ALREADY_SEEN_RUMOUR.TRUE + " " + rumour;
         }
         else{
-            server.gossiper.addRumour(newrumour);
+            getServer().gossiper.addRumour(newrumour);
             rumourACK = "RUMOUR_ACK" + " " + ALREADY_SEEN_RUMOUR.FALSE + " " + rumour;
         }
 
@@ -159,12 +160,12 @@ public abstract class MessageProcessor implements Runnable {
         boolean alreadySeenRumour =rumourACKParts[0].equals("1");
         if(alreadySeenRumour){
             String rumour =  rumourACKParts[1];
-            int rumourCount = server.gossiper.getRumours().getOrDefault(rumour, -1);
+            int rumourCount = getServer().gossiper.getRumours().getOrDefault(rumour, -1);
             rumourCount--;
             if(rumourCount<=0)
-                server.gossiper.getRumours().remove(rumour);
+                getServer().gossiper.getRumours().remove(rumour);
             else
-                server.gossiper.getRumours().put(rumour,rumourCount);
+                getServer().gossiper.getRumours().put(rumour,rumourCount);
         }
     }
 

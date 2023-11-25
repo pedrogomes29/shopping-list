@@ -1,6 +1,6 @@
-package Node.Message;
+package NioChannels.Message;
 
-import Node.Socket.Socket;
+import NioChannels.Socket.Socket;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;

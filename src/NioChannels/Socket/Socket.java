@@ -1,7 +1,7 @@
-package Node.Socket;
+package NioChannels.Socket;
 
-import Node.Message.MessageReader;
-import Node.Message.MessageWriter;
+import NioChannels.Message.MessageReader;
+import NioChannels.Message.MessageWriter;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

@@ -1,8 +1,8 @@
 package Node.Gossiper;
 
-import Node.Message.Message;
+import NioChannels.Message.Message;
 import Node.Server;
-import Node.Socket.Socket;
+import NioChannels.Socket.Socket;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;

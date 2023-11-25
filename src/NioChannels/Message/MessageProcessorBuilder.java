@@ -1,6 +1,6 @@
-package Node.Message;
+package NioChannels.Message;
 
-import Node.Server;
+import NioChannels.Server;
 
 public abstract class MessageProcessorBuilder {
     protected Server server;

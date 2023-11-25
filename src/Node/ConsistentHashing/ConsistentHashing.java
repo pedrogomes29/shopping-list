@@ -1,7 +1,7 @@
 package Node.ConsistentHashing;
 
-import Node.Message.Message;
-import Node.Socket.Socket;
+import NioChannels.Message.Message;
+import NioChannels.Socket.Socket;
 
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
