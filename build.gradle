@@ -36,3 +36,8 @@ tasks.register('Client', JavaExec) {
     classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath
     standardInput = System.in
 }
+
+tasks.register('DnsMock', JavaExec) {
+    main = 'DnsMock.Main'
+    classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath
+}

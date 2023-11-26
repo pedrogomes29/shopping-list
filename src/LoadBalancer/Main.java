@@ -5,7 +5,7 @@ import java.util.Scanner;
 public class Main {
     public static void main(String[] args) throws IOException {
 
-        boolean debug = true;
+        boolean debug = false;
         int port = 8080;
         String confFile = "conf1.txt";
         if (!debug){

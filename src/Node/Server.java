@@ -70,6 +70,20 @@ public abstract class Server extends NioChannels.Server
         }
     }
 
+
+    public Socket connectWithoutAddingNeighbor(String host, int port){
+        return connectWithoutAddingNeighbor(new InetSocketAddress(host, port));
+    }
+
+    public Socket connectWithoutAddingNeighbor(InetSocketAddress inetSocketAddress) {
+        return super.connect(inetSocketAddress);
+    }
+
+    public Socket connect(String host, int port){
+        return connect(new InetSocketAddress(host, port));
+    }
+
+
     public Socket connect(InetSocketAddress inetSocketAddress) {
         Socket socket = super.connect(inetSocketAddress);
         if (socket != null)

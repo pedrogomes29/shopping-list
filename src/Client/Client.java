@@ -16,9 +16,36 @@ public class Client {
 
     }
 
-    public void connectToCloud(String lbHost, int lbPort){
-        InetSocketAddress address = new InetSocketAddress(lbHost, lbPort);
 
+    public InetSocketAddress getCloudIP(String dnsHost, int dnsPort){
+        InetSocketAddress address = new InetSocketAddress(dnsHost, dnsPort);
+
+        try{
+            socketToLB = new Socket();
+            socketToLB.connect(address);
+            socketToLB.setSoTimeout(100000);
+
+            socketOutput = socketToLB.getOutputStream();
+            socketInput = socketToLB.getInputStream();
+
+            String message = "WHOIS LB" + "\n";
+            socketOutput.write(message.getBytes());
+
+            String serverResponse = readLine(100000);
+            String[] serverResponseParts = serverResponse.split(":");
+            String lbHost = serverResponseParts[0];
+            int lbPort = Integer.parseInt(serverResponseParts[1]);
+
+            return new InetSocketAddress(lbHost,lbPort);
+        } catch(IOException e){
+            e.printStackTrace();
+            return null;
+        }
+    }
+    public void connectToCloud(String dnsHost, int dnsPort){
+        InetSocketAddress address = getCloudIP(dnsHost,dnsPort);
+        if(address==null)
+            return;
         try{
             socketToLB = new Socket();
             socketToLB.connect(address);
@@ -32,6 +59,8 @@ public class Client {
     }
 
     public boolean pushList(Object crdt, String id) {
+        connectToCloud("127.0.0.1", 9090);
+
         String message = "PUT " + id + " " + Serializer.serializeBase64(crdt) + "\n";
 
         try {
@@ -67,6 +96,8 @@ public class Client {
     }
 
     public ShoppingListCRDT getList(String id) {
+        connectToCloud("127.0.0.1", 9090);
+
         byte[] getmessageBytes = ("GET " + id + "\n").getBytes();
 
         try {
@@ -105,21 +136,19 @@ public class Client {
         // usado apenas para testar o client
         Client client = new Client();
 
-        client.connectToCloud("127.0.0.1", 8080);
-
         ShoppingListCRDT listCRDT = new ShoppingListCRDT();
         listCRDT.add("bicicleta", 1);
         listCRDT.add("predro", 2);
 
-        boolean sended = client.pushList(listCRDT, "listadorui");
+        boolean sent = client.pushList(listCRDT, "listadopedro");
 
-        System.out.println("Sendend" + sended);
+        System.out.println("Sent" + sent);
 
-        String listaName = "listadopedro";
+        String listaName = "listadorui";
         ShoppingListCRDT response = client.getList(listaName);
 
         if (response == null){
-            System.out.println("List " + listaName + " doenst exists");
+            System.out.println("List " + listaName + " doesnt exist");
             return;
         }
 

@@ -101,7 +101,10 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
     public void receiveNewNode(String newNodeMessage){
         String newNodeID = newNodeMessage.split(" ")[1];
         try {
-            getServer().consistentHashing.addNodeToRing(new TokenNode(message.getSocket(),newNodeID));
+            TokenNode tokenNode = new TokenNode(message.getSocket(),newNodeID);
+            if (getServer().consistentHashing.addNodeToRing(tokenNode))
+                getServer().gossiper.addNeighbor(tokenNode.getSocket());
+
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
