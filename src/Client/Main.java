@@ -30,12 +30,19 @@ public class Main {
     }
 
     private ShoppingListCRDT parseShoppingList(String listLink) {
-        ShoppingListCRDT shoppingList = new ShoppingListCRDT();
         // TODO: get list and read contents
+        ShoppingListCRDT shoppingList = new ShoppingListCRDT();
         shoppingList.add("milk", 3);
         shoppingList.add("coffee", 2);
         shoppingList.add("rice", 1);
 
+        /*
+        if (file exists locally) {
+            // TODO: get file
+        } else {
+            // TODO: pull file
+            shoppingList.createNewID();
+        } */
         return shoppingList;
     }
 

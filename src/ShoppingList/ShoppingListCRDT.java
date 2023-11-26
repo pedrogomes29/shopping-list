@@ -2,14 +2,22 @@ package ShoppingList;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 public class ShoppingListCRDT {
-    Map<String, CCounter> shoppingList;
-    AWORSet listItems;
+
+    private Map<String, CCounter> shoppingList;
+    private AWORSet itemsList;
+    private String replicaID;
 
     public ShoppingListCRDT() {
         this.shoppingList = new HashMap<>();
-        this.listItems = new AWORSet();
+        this.itemsList = new AWORSet();
+        this.replicaID = UUID.randomUUID().toString();
+    }
+
+    public void createNewID() {
+        this.replicaID = UUID.randomUUID().toString();
     }
 
     public Map<String, CCounter> getShoppingList() {
@@ -22,7 +30,7 @@ public class ShoppingListCRDT {
 
     public void decrement(String item, int quantity) {
         if (this.shoppingList.get(item).getItemQuantity() < quantity) {
-            this.listItems.remove(item);
+            this.itemsList.remove(item);
             this.shoppingList.remove(item);
         } else {
             this.shoppingList.get(item).decrement(quantity);
@@ -30,12 +38,12 @@ public class ShoppingListCRDT {
     }
 
     public void add(String item, int quantity) {
-        this.listItems.add(item);
+        this.itemsList.add(item);
         this.shoppingList.put(item, new CCounter(quantity));
     }
 
     public void remove(String item) {
-        this.listItems.remove(item);
+        this.itemsList.remove(item);
         this.shoppingList.remove(item);
     }
 
