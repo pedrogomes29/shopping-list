@@ -6,18 +6,19 @@ import java.util.UUID;
 
 public class ShoppingListCRDT {
 
-    private Map<String, CCounter> shoppingList;
-    private AWORSet itemsList;
+    private final Map<String, CCounter> shoppingList;
+    private final AWORSet itemsList;
     private String replicaID;
 
     public ShoppingListCRDT() {
-        this.shoppingList = new HashMap<>();
-        this.itemsList = new AWORSet();
         this.replicaID = UUID.randomUUID().toString();
+        this.shoppingList = new HashMap<>();
+        this.itemsList = new AWORSet(replicaID);
     }
 
     public void createNewID() {
         this.replicaID = UUID.randomUUID().toString();
+        this.itemsList.setReplicaID(this.replicaID);
     }
 
     public Map<String, CCounter> getShoppingList() {
