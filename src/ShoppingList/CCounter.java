@@ -17,14 +17,14 @@ public class CCounter {
     }
 
     public void increment(int quantity) {
-        // TODO
+        this.itemQuantity = this.itemQuantity + 1;
     }
 
     public void decrement(int quantity) {
-        // TODO
+        this.itemQuantity = this.itemQuantity - 1;
     }
 
     public void merge(CCounter cCounter) {
-        // TODO
+        this.itemQuantity = this.itemQuantity + cCounter.getItemQuantity();
     }
 }
