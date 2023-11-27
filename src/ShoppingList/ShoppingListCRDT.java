@@ -19,6 +19,9 @@ public class ShoppingListCRDT {
     public void createNewID() {
         this.replicaID = UUID.randomUUID().toString();
         this.itemsList.setReplicaID(this.replicaID);
+        for(CCounter cCounter : this.shoppingList.values()){
+            cCounter.setReplicaID(replicaID);
+        }
     }
 
     public Map<String, CCounter> getShoppingList() {
@@ -40,7 +43,7 @@ public class ShoppingListCRDT {
 
     public void add(String item, int quantity) {
         this.itemsList.add(item);
-        this.shoppingList.put(item, new CCounter(quantity));
+        this.shoppingList.put(item, new CCounter(quantity, replicaID));
     }
 
     public void remove(String item) {
