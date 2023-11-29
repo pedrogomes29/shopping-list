@@ -5,6 +5,7 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 
 import Database.Database;
+import Node.ConsistentHashing.TokenNode;
 import Utils.Hasher;
 
 public class Server extends Node.Server
@@ -16,9 +17,8 @@ public class Server extends Node.Server
         super(confFilePath, nodePort, nReplicas, new MessageProcessorBuilder());
 
         try {
-            String nodeHash = Hasher.md5(nodeId);
-
-            consistentHashing.getNodeHashes().add(nodeHash);
+            TokenNode self = new TokenNode(null,nodeId);
+            consistentHashing.addNodeToRing(self);
             gossiper.addRumour("ADD_NODE" + " " + nodeId + " " + port );
 
             db = new Database("database/"+nodeId+".db");
