@@ -6,7 +6,7 @@ import java.util.UUID;
 
 public class ShoppingListCRDT {
 
-    private final Map<String, CCounter> shoppingList;
+    private Map<String, CCounter> shoppingList;
     private final AWORSet itemsList;
     private String replicaID;
 
@@ -19,13 +19,22 @@ public class ShoppingListCRDT {
     public void createNewID() {
         this.replicaID = UUID.randomUUID().toString();
         this.itemsList.setReplicaID(this.replicaID);
-        for(CCounter cCounter : this.shoppingList.values()){
-            cCounter.setReplicaID(replicaID);
+        this.itemsList.setVersion(0);
+        this.itemsList.setObservedIDs(new HashMap<>());
+        for (CCounter cCounter: this.shoppingList.values()) {
+            cCounter.setReplicaID(this.replicaID);
+            cCounter.setVersion(0);
+            cCounter.setObservedIDs(new HashMap<>());
+            cCounter.setObservedCounters(new HashMap<>());
         }
     }
 
     public Map<String, CCounter> getShoppingList() {
         return this.shoppingList;
+    }
+
+    public AWORSet getItemsList() {
+        return itemsList;
     }
 
     public void increment(String item, int quantity) {
@@ -51,7 +60,22 @@ public class ShoppingListCRDT {
         this.shoppingList.remove(item);
     }
 
-    public void join(ShoppingListCRDT shoppingListCRDT) {
-        // TODO
+    public void merge(ShoppingListCRDT shoppingListCRDT) {
+        Map<String, CCounter> mergedShoppingList = new HashMap<>();
+        this.itemsList.merge(shoppingListCRDT.getItemsList());
+
+        for (AWORSetElement item: this.itemsList.getItems()) {
+            if (this.shoppingList.containsKey(item.getItem())) {
+                if (shoppingListCRDT.getShoppingList().containsKey(item.getItem())) {
+                    this.shoppingList.get(item.getItem())
+                        .merge(shoppingListCRDT.getShoppingList().get(item.getItem()));
+                }
+                mergedShoppingList.put(item.getItem(), this.shoppingList.get(item.getItem()));
+            } else {
+                mergedShoppingList.put(item.getItem(), shoppingListCRDT.getShoppingList().get(item.getItem()));
+            }
+        }
+
+        this.shoppingList = mergedShoppingList;
     }
 }

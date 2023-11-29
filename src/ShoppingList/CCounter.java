@@ -27,10 +27,22 @@ public class CCounter {
         this.observedCounters.put(replicaID, itemQuantity);
     }
 
+    public void setVersion(int version) {
+        this.version = version;
+    }
+
     public void setReplicaID(String replicaID) {
         this.observedCounters.put(replicaID, this.observedCounters.get(this.replicaID));
         this.replicaID = replicaID;
         this.observedIDs.put(replicaID, this.version);
+    }
+
+    public void setObservedIDs(Map<String, Integer> observedIDs) {
+        this.observedIDs = observedIDs;
+    }
+
+    public void setObservedCounters(Map<String, Integer> observedCounters) {
+        this.observedCounters = observedCounters;
     }
 
     public int getItemQuantity() {

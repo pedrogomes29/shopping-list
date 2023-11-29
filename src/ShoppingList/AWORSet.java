@@ -8,7 +8,7 @@ public class AWORSet {
     private List<AWORSetElement> items;
     private int version;
     private String replicaID;
-    private final Map<String, Integer> observedIDs;
+    private Map<String, Integer> observedIDs;
 
     AWORSet(String replicaID) {
         this.version = 0;
@@ -25,8 +25,16 @@ public class AWORSet {
         return this.observedIDs;
     }
 
+    public void setVersion(int version) {
+        this.version = version;
+    }
+
     public void setReplicaID(String replicaID) {
         this.replicaID = replicaID;
+    }
+
+    public void setObservedIDs(Map<String, Integer> observedIDs) {
+        this.observedIDs = observedIDs;
     }
 
     public void add(String item) {
