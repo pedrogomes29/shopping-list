@@ -21,10 +21,6 @@ public class AWORSet {
         return this.items;
     }
 
-    public Map<String, Integer> getObservedIDs() {
-        return this.observedIDs;
-    }
-
     public void setVersion(int version) {
         this.version = version;
     }
@@ -51,7 +47,7 @@ public class AWORSet {
         List<AWORSetElement> mergedItems = new ArrayList<>();
 
         for (AWORSetElement item: this.items) {
-            List<AWORSetElement> remoteItems = aworSet.getItems().stream()
+            List<AWORSetElement> remoteItems = aworSet.items.stream()
                 .filter(element -> Objects.equals(element.getItem(), item.getItem()))
                 .collect(Collectors.toList());
 
@@ -64,14 +60,14 @@ public class AWORSet {
                     mergedItems.add(remoteItem);
                 }
             } else { // item belongs only in the local replica
-                if (aworSet.getObservedIDs().get(this.replicaID) == null ||
-                    item.getVersion() > aworSet.getObservedIDs().get(this.replicaID)) {
+                if (aworSet.observedIDs.get(this.replicaID) == null ||
+                    item.getVersion() > aworSet.observedIDs.get(this.replicaID)) {
                     mergedItems.add(item);
                 }
             }
         }
 
-        for (AWORSetElement item: aworSet.getItems()) {
+        for (AWORSetElement item: aworSet.items) {
             List<AWORSetElement> localItems = this.items.stream()
                 .filter(element -> Objects.equals(element.getItem(), item.getItem()))
                 .collect(Collectors.toList());
@@ -85,6 +81,7 @@ public class AWORSet {
             }
         }
 
+        this.version++;
         this.observedIDs.put(aworSet.replicaID, aworSet.version);
         this.items = mergedItems;
     }

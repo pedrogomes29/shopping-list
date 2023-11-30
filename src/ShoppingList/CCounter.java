@@ -27,6 +27,10 @@ public class CCounter {
         this.observedCounters.put(replicaID, itemQuantity);
     }
 
+    public int getItemQuantity() {
+        return itemQuantity;
+    }
+
     public void setVersion(int version) {
         this.version = version;
     }
@@ -45,18 +49,6 @@ public class CCounter {
         this.observedCounters = observedCounters;
     }
 
-    public int getItemQuantity() {
-        return itemQuantity;
-    }
-
-    public Map<String, Integer> getObservedIDs() {
-        return observedIDs;
-    }
-
-    public Map<String, Integer> getObservedCounters() {
-        return observedCounters;
-    }
-
     public void increment(int quantity) {
         this.itemQuantity = this.itemQuantity + quantity;
         this.version++;
@@ -72,41 +64,30 @@ public class CCounter {
     }
 
     public void merge(CCounter cCounter) {
-        Map<String, Integer> mergedObservedIDs = new HashMap<>();
-        Map<String, Integer> mergedObservedCounters = new HashMap<>();
         int mergedItemQuantity = 0;
 
         this.observedIDs.forEach((replicaID, version) -> {
             // replica belongs in both counters
-            if (cCounter.getObservedIDs().containsKey(replicaID)) {
-               if (cCounter.getObservedIDs().get(replicaID) > version){
-                   mergedObservedIDs.put(replicaID, cCounter.getObservedIDs().get(replicaID));
-                   mergedObservedCounters.put(replicaID, cCounter.getObservedCounters().get(replicaID));
-               } else {
-                   mergedObservedIDs.put(replicaID, version);
-                   mergedObservedCounters.put(replicaID, this.observedCounters.get(replicaID));
+            if (cCounter.observedIDs.containsKey(replicaID)) {
+               if (cCounter.observedIDs.get(replicaID) > version) {
+                   this.observedIDs.put(replicaID, cCounter.observedIDs.get(replicaID));
+                   this.observedCounters.put(replicaID, cCounter.observedCounters.get(replicaID));
                }
-            } else {  // replica belongs only in the local counter
-                mergedObservedIDs.put(replicaID, version);
-                mergedObservedCounters.put(replicaID, this.observedCounters.get(replicaID));
             }
         });
 
-        cCounter.getObservedIDs().forEach((replicaID, version) -> {
+        cCounter.observedIDs.forEach((replicaID, version) -> {
             // replica belongs only in the remote counter
             if (!this.observedIDs.containsKey(replicaID)) {
-                mergedObservedIDs.put(replicaID, version);
-                mergedObservedCounters.put(replicaID, cCounter.getObservedCounters().get(replicaID));
+                this.observedIDs.put(replicaID, version);
+                this.observedCounters.put(replicaID, cCounter.observedCounters.get(replicaID));
             }
         });
 
-        for (Map.Entry<String, Integer> entry : mergedObservedCounters.entrySet()) {
-            Integer quantity = entry.getValue();
-            mergedItemQuantity += quantity;
+        for (Map.Entry<String, Integer> counter: observedCounters.entrySet()) {
+            mergedItemQuantity += counter.getValue();
         }
-
-        this.observedIDs = mergedObservedIDs;
-        this.observedCounters = mergedObservedCounters;
+        this.version++;
         this.itemQuantity = mergedItemQuantity;
     }
 }
