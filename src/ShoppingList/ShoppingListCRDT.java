@@ -3,123 +3,82 @@ package ShoppingList;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 public class ShoppingListCRDT implements Serializable {
-    Map<String, Integer> shoppingList;
-    Map<String, Integer> currentShoppingList;
-    Map<String, Integer> delta;
+
+    private Map<String, CCounter> shoppingList;
+    private final AWORSet itemsList;
+    private String replicaID;
 
     public ShoppingListCRDT() {
+        this.replicaID = UUID.randomUUID().toString();
         this.shoppingList = new HashMap<>();
-        this.currentShoppingList = new HashMap<>();
-        this.delta = new HashMap<>();
+        this.itemsList = new AWORSet(this.replicaID);
     }
 
-    public ShoppingListCRDT(Map<String, Integer> shoppingList) {
-        this.shoppingList = shoppingList;
-        this.currentShoppingList = new HashMap<>(shoppingList);
-        this.delta = new HashMap<>();
-        shoppingList.forEach((item, quantity) -> {
-            delta.put(item, 0);
-        });
+    public void createNewID() {
+        this.replicaID = UUID.randomUUID().toString();
+        this.itemsList.setReplicaID(this.replicaID);
+        this.itemsList.setVersion(0);
+        this.itemsList.setObservedIDs(new HashMap<>());
+        for (CCounter cCounter: this.shoppingList.values()) {
+            cCounter.setReplicaID(this.replicaID);
+            cCounter.setVersion(0);
+            cCounter.setObservedIDs(new HashMap<>());
+            cCounter.setObservedCounters(new HashMap<>());
+        }
     }
 
-    public Map<String, Integer> getShoppingList() {
+    public Map<String, CCounter> getShoppingList() {
         return this.shoppingList;
     }
 
-    public Map<String, Integer> getCurrentShoppingList() {
-        return this.currentShoppingList;
-    }
-
-    public Map<String, Integer> getDelta() {
-        return this.delta;
+    public AWORSet getItemsList() {
+        return itemsList;
     }
 
     public void increment(String item, int quantity) {
-        this.currentShoppingList.put(item, this.currentShoppingList.get(item) + quantity);
-        this.delta.put(item, this.delta.get(item) + quantity);
-    }
-
-    public void increment(String item) {
-        increment(item, 1);
+        this.shoppingList.get(item).increment(quantity);
+        this.itemsList.incrementVersion();
     }
 
     public void decrement(String item, int quantity) {
-        if (this.currentShoppingList.get(item) < quantity) {
-            if (this.shoppingList.containsKey(item)) {
-                this.delta.put(item, -this.shoppingList.get(item));
-            } else {
-                this.delta.remove(item);
-            }
-            this.currentShoppingList.remove(item);
+        if (this.shoppingList.get(item).getItemQuantity() < quantity) {
+            this.itemsList.remove(item);
+            this.shoppingList.remove(item);
         } else {
-            this.currentShoppingList.put(item, this.currentShoppingList.get(item) - quantity);
-            this.delta.put(item, this.delta.get(item) - quantity);
+            this.shoppingList.get(item).decrement(quantity);
+            this.itemsList.incrementVersion();
         }
     }
 
-    public void decrement(String item) {
-        decrement(item, 1);
+    public void add(String item, int quantity) {
+        this.itemsList.add(item);
+        this.shoppingList.put(item, new CCounter(quantity, replicaID));
     }
 
-    public boolean add(String item, int quantity) {
-        if (this.currentShoppingList.containsKey(item)) {
-            return false;
-        }
-        this.currentShoppingList.put(item, quantity);
-        if (this.shoppingList.containsKey(item)) {
-            this.delta.put(item, quantity - this.shoppingList.get(item));
-        } else {
-            this.delta.put(item, quantity);
-        }
-        return true;
+    public void remove(String item) {
+        this.itemsList.remove(item);
+        this.shoppingList.remove(item);
     }
 
-    public boolean reset(String item) {
-        if (!this.currentShoppingList.containsKey(item)) {
-            return false;
-        }
-        if (this.shoppingList.containsKey(item)) {
-            this.delta.put(item, -this.shoppingList.get(item));
-        } else {
-            this.delta.remove(item);
-        }
-        this.currentShoppingList.remove(item);
-        return true;
-    }
+    public void merge(ShoppingListCRDT shoppingListCRDT) {
+        Map<String, CCounter> mergedShoppingList = new HashMap<>();
+        this.itemsList.merge(shoppingListCRDT.getItemsList());
 
-    public void join(ShoppingListCRDT shoppingList2) {
-        Map<String, Integer> delta2 = shoppingList2.getDelta();
-
-        // Adapt delta of shoppingList2 according to this.shoppingList if necessary
-        if (!shoppingList2.getShoppingList().equals(this.shoppingList)) {
-            shoppingList2.getDelta().forEach((item, quantity) -> {
-                Integer newQuantity = quantity + shoppingList2.getShoppingList().getOrDefault(item, 0) - this.shoppingList.getOrDefault(item, 0);
-                delta2.put(item, newQuantity);
-            });
-        }
-        for (Map.Entry<String, Integer> entry : delta2.entrySet()) {
-            String item = entry.getKey();
-            Integer quantity = entry.getValue();
-
-            if (!this.delta.containsKey(item)) {
-                this.add(item, quantity);
-            } else {
-                int newDelta, deltaOffset;
-
-                if ((this.delta.get(item) >= 0 && delta2.get(item) >= 0) || (this.delta.get(item) <= 0 && delta2.get(item) <= 0)) {
-                    newDelta = Math.max(delta2.get(item), this.delta.get(item));
-                } else {
-                    newDelta = delta2.get(item) + this.delta.get(item);
+        for (AWORSetElement item: this.itemsList.getItems()) {
+            if (this.shoppingList.containsKey(item.getItem())) {
+                if (shoppingListCRDT.getShoppingList().containsKey(item.getItem())) {
+                    this.shoppingList.get(item.getItem())
+                        .merge(shoppingListCRDT.getShoppingList().get(item.getItem()));
                 }
-                deltaOffset = newDelta - this.delta.get(item);
-                if (deltaOffset > 0) {
-                    this.increment(item, deltaOffset);
-                } else {
-                    this.decrement(item, Math.abs(deltaOffset));
-                }
+                mergedShoppingList.put(item.getItem(), this.shoppingList.get(item.getItem()));
+            } else {
+                mergedShoppingList.put(item.getItem(), shoppingListCRDT.getShoppingList().get(item.getItem()));
             }
         }
+
+        this.shoppingList = mergedShoppingList;
     }
 }

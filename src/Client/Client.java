@@ -152,8 +152,8 @@ public class Client {
             return;
         }
 
-        for(String key : response.getCurrentShoppingList().keySet()){
-            System.out.println(key + " " + response.getCurrentShoppingList().get(key));
+        for(String key : response.getShoppingList().keySet()){
+            System.out.println(key + " " + response.getShoppingList().get(key).getItemQuantity());
         }
     }
 
