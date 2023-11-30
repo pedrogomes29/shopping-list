@@ -3,7 +3,7 @@ package ShoppingList;
 public class AWORSetElement {
 
     private final String item;
-    private final int version;
+    private int version;
 
     AWORSetElement(String item, int version) {
         this.item = item;
@@ -16,5 +16,9 @@ public class AWORSetElement {
 
     public int getVersion() {
         return version;
+    }
+
+    public void setVersion(int version) {
+        this.version = version;
     }
 }

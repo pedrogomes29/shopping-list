@@ -13,7 +13,7 @@ public class ShoppingListCRDT {
     public ShoppingListCRDT() {
         this.replicaID = UUID.randomUUID().toString();
         this.shoppingList = new HashMap<>();
-        this.itemsList = new AWORSet(replicaID);
+        this.itemsList = new AWORSet(this.replicaID);
     }
 
     public void createNewID() {
@@ -39,6 +39,7 @@ public class ShoppingListCRDT {
 
     public void increment(String item, int quantity) {
         this.shoppingList.get(item).increment(quantity);
+        this.itemsList.incrementVersion();
     }
 
     public void decrement(String item, int quantity) {
@@ -47,6 +48,7 @@ public class ShoppingListCRDT {
             this.shoppingList.remove(item);
         } else {
             this.shoppingList.get(item).decrement(quantity);
+            this.itemsList.incrementVersion();
         }
     }
 

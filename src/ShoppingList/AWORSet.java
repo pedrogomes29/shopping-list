@@ -25,6 +25,13 @@ public class AWORSet {
         this.version = version;
     }
 
+    public void incrementVersion() {
+        this.version++;
+        for (AWORSetElement item: this.items) {
+            item.setVersion(this.version);
+        }
+    }
+
     public void setReplicaID(String replicaID) {
         this.replicaID = replicaID;
     }
