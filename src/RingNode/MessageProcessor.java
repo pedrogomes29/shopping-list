@@ -78,7 +78,6 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
 
         try {
             if(getServer().consistentHashing.isObjectReplica(getServer().getNodeId(), objectID)){
-                System.out.println("e replica");
                 switch (messageType){
                     case "PUT":
                         receivePut(message, messageContentParts);
@@ -90,7 +89,6 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
                         throw new RuntimeException("MessageType unknown " + messageType);
                 }
             }else {
-                System.out.println("nao e");
                 try {
                     return getServer().consistentHashing.propagateRequestToNode(message);
                 } catch (NoSuchAlgorithmException e) {

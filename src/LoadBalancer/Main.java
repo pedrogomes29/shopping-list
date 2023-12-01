@@ -14,7 +14,7 @@ public class Main {
 
         }
 
-        Server server = new Server("conf/" + confFile, port, 3);
+        Server server = new Server("conf/" + confFile, port,3, 3);
 
         server.startThreads();
 

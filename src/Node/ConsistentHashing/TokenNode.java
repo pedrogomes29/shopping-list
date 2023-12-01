@@ -1,32 +1,32 @@
 package Node.ConsistentHashing;
 
 import NioChannels.Socket.Socket;
+import Utils.Hasher;
 
 import java.security.NoSuchAlgorithmException;
 
 public class TokenNode {
     String id;
     Socket socket;
-    String hash;
     public TokenNode(Socket nodesocket, String nodeId){
-        try {
-            this.id = nodeId;
-            this.socket = nodesocket;
-            this.hash =  Utils.Hasher.md5(nodeId);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
+        this.id = nodeId;
+        this.socket = nodesocket;
     }
 
+    public static String[] getVirtualNodesHashes(String nodeId, int nrVirtualNodesPerNode) throws NoSuchAlgorithmException {
+        String[] hashes = new String[nrVirtualNodesPerNode];
+        for(int i=0; i < nrVirtualNodesPerNode; i++){
+            String virtualNodeId = nodeId + "-" + i;
+            String virtualNodeIdHash = Hasher.md5(virtualNodeId);
+            hashes[i] = virtualNodeIdHash;
+        }
+        return hashes;
+    }
     public String getId(){
         return this.id;
     }
 
     public Socket getSocket(){
         return this.socket;
-    }
-
-    public String getHash(){
-        return hash;
     }
 }
