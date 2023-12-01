@@ -12,11 +12,13 @@ import java.util.concurrent.ThreadLocalRandom;
 public class ConsistentHashing {
 
     private final int nrReplicas;
+    private final int nrVirtualNodesPerNode;
     private final ArrayList<String> nodeHashes;
     private final HashMap<String, TokenNode> hashToNode;
 
-    public ConsistentHashing(int nrReplicas){
+    public ConsistentHashing(int nrReplicas, int nrVirtualNodesPerNode){
         this.nrReplicas = nrReplicas;
+        this.nrVirtualNodesPerNode = nrVirtualNodesPerNode;
         this.nodeHashes = new ArrayList<>();
         this.hashToNode = new HashMap<>();
     }
@@ -41,7 +43,7 @@ public class ConsistentHashing {
     }
 
     public synchronized boolean addNodeToRing(TokenNode node) throws NoSuchAlgorithmException {
-        String[] virtualNodeHashes = TokenNode.getVirtualNodesHashes(node.getId(),nrReplicas);
+        String[] virtualNodeHashes = TokenNode.getVirtualNodesHashes(node.getId(),nrVirtualNodesPerNode);
         for(String virtualNodeHash:virtualNodeHashes) {
             if (hashToNode.containsKey(virtualNodeHash))
                 return false;
@@ -57,7 +59,7 @@ public class ConsistentHashing {
     public boolean isObjectReplica(String nodeId, String objectId) throws NoSuchAlgorithmException {
         int nrNodes = nodeHashes.size();
         String objectHash = Utils.Hasher.md5(objectId);
-        String[] virtualNodeHashes = TokenNode.getVirtualNodesHashes(nodeId,nrReplicas);
+        String[] virtualNodeHashes = TokenNode.getVirtualNodesHashes(nodeId,nrVirtualNodesPerNode);
 
         int firstNodeToStoreIdx = binarySearch(objectHash);
 

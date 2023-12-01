@@ -13,8 +13,8 @@ public class Server extends Node.Server
 
     private final Database db;
 
-    public Server(String confFilePath, int nodePort, int nReplicas ) throws IOException {
-        super(confFilePath, nodePort, nReplicas, new MessageProcessorBuilder());
+    public Server(String confFilePath, int nodePort, int nrReplicas, int nrVirtualNodesPerNode) throws IOException {
+        super(confFilePath, nodePort, nrReplicas, nrVirtualNodesPerNode, new MessageProcessorBuilder());
 
         try {
             TokenNode self = new TokenNode(null,nodeId);

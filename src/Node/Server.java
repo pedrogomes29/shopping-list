@@ -2,6 +2,7 @@ package Node;
 
 
 import Node.ConsistentHashing.ConsistentHashing;
+import Node.ConsistentHashing.TokenNode;
 import Node.Gossiper.Gossiper;
 import NioChannels.Message.MessageProcessorBuilder;
 import NioChannels.Socket.Socket;
@@ -23,11 +24,14 @@ public abstract class Server extends NioChannels.Server
     public final Gossiper gossiper;
     private Thread gossiperThread;
 
-    public Server(String confFilePath, int port,int nrReplicas, MessageProcessorBuilder messageProcessorBuilder ) throws IOException {
+    private final int nrVirtualNodesPerNode;
+
+    public Server(String confFilePath, int port,int nrReplicas,int nrVirtualNodesPerNode, MessageProcessorBuilder messageProcessorBuilder ) throws IOException {
         super(port, messageProcessorBuilder);
 
         this.nodeId = UUID.randomUUID().toString();
-        this.consistentHashing = new ConsistentHashing(nrReplicas);
+        this.consistentHashing = new ConsistentHashing(nrReplicas,nrVirtualNodesPerNode);
+        this.nrVirtualNodesPerNode = nrVirtualNodesPerNode;
         gossiper = new Gossiper(this, this.outboundMessageQueue);
 
         connectToNeighborsFromConf(confFilePath);
@@ -96,8 +100,11 @@ public abstract class Server extends NioChannels.Server
     }
 
     public boolean knowsAboutRingNode(String nodeID) throws NoSuchAlgorithmException {
-        String nodeIDHash = Hasher.md5(nodeID);
-        return consistentHashing.getHashToNode().containsKey(nodeIDHash) || nodeID.equals(this.nodeId);
+        for(String virtualNodeIDHash:TokenNode.getVirtualNodesHashes(nodeID,nrVirtualNodesPerNode)){
+            if(consistentHashing.getHashToNode().containsKey(virtualNodeIDHash))
+                return true;
+        }
+        return false;
     }
 
     public void addLBNode(Socket socket,String socketID){
