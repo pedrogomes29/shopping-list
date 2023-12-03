@@ -1,9 +1,10 @@
 package ShoppingList;
 
+import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class AWORSet {
+public class AWORSet implements Serializable {
 
     private List<AWORSetElement> items;
     private int version;

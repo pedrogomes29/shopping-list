@@ -1,6 +1,8 @@
 package ShoppingList;
 
-public class AWORSetElement {
+import java.io.Serializable;
+
+public class AWORSetElement implements Serializable {
 
     private final String item;
     private int version;

@@ -1,5 +1,10 @@
 package Client;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
@@ -7,42 +12,46 @@ import java.util.Scanner;
 
 import ShoppingList.CCounter;
 import ShoppingList.ShoppingListCRDT;
+import Utils.Serializer;
 
 public class Main {
 
     private static final Scanner scan = new Scanner(System.in);
 
-    private void createShoppingList() {
+    private void createShoppingList() throws IOException {
         System.out.println("What name should we give to your shopping list?");
         String listName = scan.nextLine();
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         LocalDateTime now = LocalDateTime.now();
         String listLink = listName + "-" + dtf.format(now); // TODO: check cloud for repeated link
         System.out.println("From now on you can access this list by providing the following link " + listLink);
-        this.editList(new ShoppingListCRDT());
+        this.editList(new ShoppingListCRDT(), listLink);
     }
 
-    private void getShoppingList() {
+    private void getShoppingList() throws IOException {
         System.out.println("What's the link of the shopping list you wish to access?");
         String listLink = scan.nextLine();
         ShoppingListCRDT shoppingListCRDT = parseShoppingList(listLink);
-        this.editList(shoppingListCRDT);
+        this.editList(shoppingListCRDT, listLink);
     }
 
-    private ShoppingListCRDT parseShoppingList(String listLink) {
-        // TODO: get list and read contents
-        ShoppingListCRDT shoppingList = new ShoppingListCRDT();
-        shoppingList.add("milk", 3);
-        shoppingList.add("coffee", 2);
-        shoppingList.add("rice", 1);
+    private ShoppingListCRDT parseShoppingList(String listLink) throws IOException {
+        String shoppingListPath = new File("src/Client/shopping-lists/" + listLink + ".txt").getAbsolutePath();
+        File shoppingListFile = new File(shoppingListPath);
+        ShoppingListCRDT shoppingList;
 
-        /*
-        if (file exists locally) {
-            // TODO: get file
+        if (shoppingListFile.exists() ) {
+            String content = Files.readString(shoppingListFile.toPath());
+            shoppingList = (ShoppingListCRDT) Serializer.deserializeBase64(content);
         } else {
             // TODO: pull file
-            shoppingList.createNewID();
-        } */
+            //shoppingList.createNewID();
+
+            shoppingList = new ShoppingListCRDT();
+            shoppingList.add("eggs", 6);
+            shoppingList.add("salt", 2);
+            shoppingList.add("sugar", 1);
+        }
         return shoppingList;
     }
 
@@ -57,7 +66,7 @@ public class Main {
         }
     }
 
-    private void editList(ShoppingListCRDT shoppingListCRDT) {
+    private void editList(ShoppingListCRDT shoppingListCRDT, String listLink) throws IOException {
         this.displayShoppingList(shoppingListCRDT.getShoppingList());
 
         int option = -1;
@@ -106,7 +115,10 @@ public class Main {
                 this.displayShoppingList(shoppingListCRDT.getShoppingList());
             }
         }
-        // TODO: save local copy
+        //save local copy
+        String newContent = Serializer.serializeBase64(shoppingListCRDT);
+        Path shoppingListPath = Path.of("src/Client/shopping-lists/" + listLink + ".txt");
+        Files.writeString(shoppingListPath, newContent, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
     private void addListItem(ShoppingListCRDT shoppingListCRDT) {
@@ -179,13 +191,13 @@ public class Main {
                 case 2 -> shoppingListCRDT.decrement(item, quantity);
             }
             System.out.println(option == 1 ?
-                item + " quantity successfully increased by" + quantity + " units" :
-                item + " quantity successfully decreased by" + quantity + " units"
+                item + " quantity successfully increased by " + quantity + " units" :
+                item + " quantity successfully decreased by " + quantity + " units"
             );
         }
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         Main main = new Main();
         int option = -1;
         while (option == -1) {

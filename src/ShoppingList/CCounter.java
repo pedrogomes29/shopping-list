@@ -1,9 +1,10 @@
 package ShoppingList;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-public class CCounter {
+public class CCounter implements Serializable {
 
     private int itemQuantity;
     private int version;
