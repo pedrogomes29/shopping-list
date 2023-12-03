@@ -1,29 +1,27 @@
 package RingNode;
 
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 
 import Database.Database;
 import Node.ConsistentHashing.TokenNode;
-import Utils.Hasher;
 
 public class Server extends Node.Server
 {
 
     private final Database db;
 
-    public Server(String confFilePath, int nodePort, int nrReplicas, int nrVirtualNodesPerNode) throws IOException {
+    public Server(String confFilePath, int nodePort, int nrReplicas, int nrVirtualNodesPerNode) throws IOException, SQLException {
         super(confFilePath, nodePort, nrReplicas, nrVirtualNodesPerNode, new MessageProcessorBuilder());
 
-        try {
-            TokenNode self = new TokenNode(null,nodeId);
-            consistentHashing.addNodeToRing(self);
-            gossiper.addRumour("ADD_NODE" + " " + nodeId + " " + port );
+        TokenNode self = new TokenNode(null,nodeId);
+        consistentHashing.addNodeToRing(self);
+        gossiper.addRumour("ADD_NODE" + " " + nodeId + " " + port );
 
-            db = new Database("database/"+nodeId+".db");
-        } catch (SQLException | NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+        try {
+            db = new Database("database/" + nodeId + ".db");
+        } catch (SQLException e){
+            throw new SQLException("Conecting to database - " + e.getMessage());
         }
     }
 
@@ -31,4 +29,9 @@ public class Server extends Node.Server
         return db;
     }
 
+    @Override
+    public void close() throws Exception {
+        super.close();
+        db.close();
+    }
 }

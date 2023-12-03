@@ -1,10 +1,11 @@
 package RingNode;
 
 import java.io.IOException;
+import java.sql.SQLException;
 
 public class Main {
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args){
         boolean debug = false;
         int port = 101;
         String confFile = "conf1.txt";
@@ -14,7 +15,11 @@ public class Main {
 
         }
 
-        Server server = new Server("conf/" + confFile, port, 3, 3);
-        server.startThreads();
+        try(Server server = new Server("conf/" + confFile, port, 3, 3)) {
+            server.startThreads();
+
+        }catch (Exception exception){
+            System.err.println(exception.getMessage());
+        }
     }
 }

@@ -2,9 +2,7 @@ package Node.ConsistentHashing;
 
 import NioChannels.Message.Message;
 import NioChannels.Socket.Socket;
-import Utils.Hasher;
 
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -42,7 +40,7 @@ public class ConsistentHashing {
         return low;
     }
 
-    public synchronized boolean addNodeToRing(TokenNode node) throws NoSuchAlgorithmException {
+    public synchronized boolean addNodeToRing(TokenNode node){
         String[] virtualNodeHashes = TokenNode.getVirtualNodesHashes(node.getId(),nrVirtualNodesPerNode);
         for(String virtualNodeHash:virtualNodeHashes) {
             if (hashToNode.containsKey(virtualNodeHash))
@@ -56,7 +54,7 @@ public class ConsistentHashing {
     }
 
 
-    public boolean isObjectReplica(String nodeId, String objectId) throws NoSuchAlgorithmException {
+    public boolean isObjectReplica(String nodeId, String objectId){
         int nrNodes = nodeHashes.size();
         String objectHash = Utils.Hasher.md5(objectId);
         String[] virtualNodeHashes = TokenNode.getVirtualNodesHashes(nodeId,nrVirtualNodesPerNode);
@@ -79,9 +77,8 @@ public class ConsistentHashing {
      *
      * @param message The message containing the request and object ID.
      * @return The socket of the selected node to handle the request.
-     * @throws NoSuchAlgorithmException If the required hashing algorithm is not available.
      */
-    public Socket propagateRequestToNode(Message message) throws NoSuchAlgorithmException {
+    public Socket propagateRequestToNode(Message message){
         int nrNodes = nodeHashes.size();
         String objectID = new String(message.bytes).split(" ")[1];
         String idHash = Utils.Hasher.md5(objectID);

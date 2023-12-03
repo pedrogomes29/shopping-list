@@ -3,8 +3,6 @@ package Node.ConsistentHashing;
 import NioChannels.Socket.Socket;
 import Utils.Hasher;
 
-import java.security.NoSuchAlgorithmException;
-
 public class TokenNode {
     String id;
     Socket socket;
@@ -13,7 +11,7 @@ public class TokenNode {
         this.socket = nodesocket;
     }
 
-    public static String[] getVirtualNodesHashes(String nodeId, int nrVirtualNodesPerNode) throws NoSuchAlgorithmException {
+    public static String[] getVirtualNodesHashes(String nodeId, int nrVirtualNodesPerNode) {
         String[] hashes = new String[nrVirtualNodesPerNode];
         for(int i=0; i < nrVirtualNodesPerNode; i++){
             String virtualNodeId = nodeId + "-" + i;

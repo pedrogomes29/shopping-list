@@ -8,7 +8,6 @@ import NioChannels.Socket.Socket;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Queue;
@@ -69,29 +68,23 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
             firstOneConnected = true;
         }
 
-        try {
-            if(Objects.equals(method, "ADD_NODE")){
-                if (!getServer().knowsAboutRingNode(newNodeID)){
-                    Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
-                    TokenNode tokenNode = new TokenNode(socketToNewNode,newNodeID);
-                    if (getServer().consistentHashing.addNodeToRing(tokenNode))
-                        getServer().gossiper.addNeighbor(tokenNode.getSocket());
+        if(Objects.equals(method, "ADD_NODE")){
+            if (!getServer().knowsAboutRingNode(newNodeID)){
+                Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
+                TokenNode tokenNode = new TokenNode(socketToNewNode,newNodeID);
+                if (getServer().consistentHashing.addNodeToRing(tokenNode))
+                    getServer().gossiper.addNeighbor(tokenNode.getSocket());
 
-                    sendMessageToNewNode(socketToNewNode);
-                }
-
-            }
-            else if(Objects.equals(method, "ADD_LB")){
-                if (!getServer().knowsAboutLBNode(newNodeID)){
-                    Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
-                    getServer().addLBNode(socketToNewNode,newNodeID);
-                    sendMessageToNewNode(socketToNewNode);
-                }
+                sendMessageToNewNode(socketToNewNode);
             }
 
-
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+        }
+        else if(Objects.equals(method, "ADD_LB")){
+            if (!getServer().knowsAboutLBNode(newNodeID)){
+                Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
+                getServer().addLBNode(socketToNewNode,newNodeID);
+                sendMessageToNewNode(socketToNewNode);
+            }
         }
 
         return method + " " + newNodeID + " " + newNodeHost + ":" + newNodePort;
@@ -100,14 +93,11 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
 
     public void receiveNewNode(String newNodeMessage){
         String newNodeID = newNodeMessage.split(" ")[1];
-        try {
-            TokenNode tokenNode = new TokenNode(message.getSocket(),newNodeID);
-            if (getServer().consistentHashing.addNodeToRing(tokenNode))
-                getServer().gossiper.addNeighbor(tokenNode.getSocket());
 
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
+        TokenNode tokenNode = new TokenNode(message.getSocket(),newNodeID);
+        if (getServer().consistentHashing.addNodeToRing(tokenNode))
+            getServer().gossiper.addNeighbor(tokenNode.getSocket());
+
     }
 
     public void receiveNewLB(String newNodeMessage){
@@ -134,12 +124,11 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
                 else
                     alreadyReceivedRumour = getServer().knowsAboutLBNode(nodeID);
 
-
                 newrumour = receiveNewNodeWithEndpoint(rumour);
 
-
-            } catch (IOException | NoSuchAlgorithmException e) {
-                throw new RuntimeException(e);
+            } catch (IOException e) {
+                System.err.println("Error: received rumour, but cant get address of the sender");
+                return;
             }
         }
 
@@ -172,31 +161,42 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         }
     }
 
+    /**
+     * Process incoming messages, identifies the message type,
+     * and invokes the appropriate handler methods based on the message type.
+     */
     @Override
     public void run() {
         String messageContent = new String(message.bytes);
 
-        if(messageContent.startsWith("RUMOUR ")) {
-            // first one send
-            String[] messageParts = messageContent.split(" ", 2);
-            String rumour = messageParts[1];
-            receiveRumour(rumour);
-        }
-        else if(messageContent.startsWith("RUMOUR_ACK ")) {
-            String[] messageParts = messageContent.split(" ", 2);
-            String rumourACK = messageParts[1];
-            receiveRumourACK(rumourACK);
-        }
-        else if(messageContent.startsWith("ADD_NODE ")) {
-            receiveNewNode(messageContent);
-        }else if(messageContent.startsWith("ADD_LB ")) {
-            receiveNewLB(messageContent);
-        }else if(messageContent.startsWith("PUT ") || messageContent.startsWith("GET ")){
-            receivePutGet(message);
-        }else if(messageContent.startsWith("PUT_ACK")){
-            receiveReply(messageContent, 2);
-        }else if(messageContent.startsWith("GET_RESPONSE")){
-            receiveReply(messageContent, 3);
+        String[] messageParts = messageContent.split(" ", 2);
+        String messageType = messageParts[0];
+
+        switch (messageType) {
+            case "RUMOUR":
+                receiveRumour(messageParts[1]);
+                break;
+            case "RUMOUR_ACK":
+                receiveRumourACK(messageParts[1]);
+                break;
+            case "ADD_NODE":
+                receiveNewNode(messageContent);
+                break;
+            case "ADD_LB":
+                receiveNewLB(messageContent);
+                break;
+            case "PUT":
+            case "GET":
+                receivePutGet(message);
+                break;
+            case "GET_NACK":
+            case "PUT_ACK":
+                receiveReply(messageContent, 2);
+                break;
+            case "PUT_NACK":
+            case "GET_RESPONSE":
+                receiveReply(messageContent, 3);
+                break;
         }
     }
 

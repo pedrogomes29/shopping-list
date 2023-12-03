@@ -4,8 +4,14 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 public class Hasher {
-    public static String md5(String textToHash) throws NoSuchAlgorithmException {
-        MessageDigest md = MessageDigest.getInstance("MD5");
+    public static String md5(String textToHash){
+        MessageDigest md;
+        try {
+            md = MessageDigest.getInstance("MD5");
+        } catch (NoSuchAlgorithmException e) {
+            // this should never happen
+            throw new RuntimeException(e);
+        }
         byte[] bytes = md.digest(textToHash.getBytes());
         return bytesToHex(bytes);
     }
