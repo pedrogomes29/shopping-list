@@ -123,7 +123,7 @@ public class Main {
 
     private void addListItem(ShoppingListCRDT shoppingListCRDT) {
         System.out.println("\nWhat's the name of the item you wish to add to the list?");
-        String item = scan.nextLine();
+        String item = scan.nextLine().toLowerCase();
         if (shoppingListCRDT.getShoppingList().containsKey(item)) {
             System.out.println("This item is already on the list");
             return;
@@ -143,7 +143,7 @@ public class Main {
 
     private void removeListItem(ShoppingListCRDT shoppingListCRDT) {
         System.out.println("\nWhat's the name of the item you wish to remove from the list?");
-        String item = scan.nextLine();
+        String item = scan.nextLine().toLowerCase();
         if (!shoppingListCRDT.getShoppingList().containsKey(item)) {
             System.out.println("This item isn't on the list");
             return;
@@ -155,7 +155,7 @@ public class Main {
 
     private void updateListItemQuantity(ShoppingListCRDT shoppingListCRDT) {
         System.out.println("\nWhat's the name of the item whose quantity you wish to update?");
-        String item = scan.nextLine();
+        String item = scan.nextLine().toLowerCase();
         if (!shoppingListCRDT.getShoppingList().containsKey(item)) {
             System.out.println("This item isn't on the list");
             return;
