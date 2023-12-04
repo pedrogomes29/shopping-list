@@ -28,6 +28,16 @@ public class CCounter implements Serializable {
         this.observedCounters.put(replicaID, itemQuantity);
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        CCounter cCounter = (CCounter) obj;
+        return this.itemQuantity == cCounter.getItemQuantity() &&
+                this.observedIDs.equals(cCounter.observedIDs) &&
+                this.observedCounters.equals(cCounter.observedCounters);
+    }
+
     public int getItemQuantity() {
         return itemQuantity;
     }

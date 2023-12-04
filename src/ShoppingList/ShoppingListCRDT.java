@@ -17,6 +17,15 @@ public class ShoppingListCRDT implements Serializable {
         this.itemsList = new AWORSet(this.replicaID);
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+
+        ShoppingListCRDT shoppingListCRDT = (ShoppingListCRDT) obj;
+        return this.shoppingList.equals(shoppingListCRDT.shoppingList);
+    }
+
     public void createNewID() {
         this.replicaID = UUID.randomUUID().toString();
         this.itemsList.setReplicaID(this.replicaID);
