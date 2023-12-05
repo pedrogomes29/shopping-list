@@ -21,4 +21,8 @@ public class Node {
     public Socket getSocket(){
         return this.socket;
     }
+
+    public InetSocketAddress getNodeEndpoint(){
+        return nodeEndpoint;
+    }
 }

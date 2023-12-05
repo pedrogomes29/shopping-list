@@ -23,8 +23,8 @@ public class Server extends Node.Server
         try {
             TokenNode self = new TokenNode(null,nodeId,null);
             consistentHashing.addNodeToRing(self);
+            gossiper.addNeighbor(self);
             gossiper.addRumour("ADD_NODE" + " " + nodeId + " " + port );
-
             db = new Database("database/"+nodeId+".db");
             synchronizer = new Synchronizer(this,super.getWriteQueue(),nrReplicas,nrVirtualNodesPerNode);
         } catch (SQLException | NoSuchAlgorithmException e) {

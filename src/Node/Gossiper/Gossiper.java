@@ -4,6 +4,7 @@ import NioChannels.Message.Message;
 import Node.Server;
 import NioChannels.Socket.Socket;
 
+import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import Node.Node;
@@ -15,7 +16,7 @@ public class Gossiper implements Runnable{
 
     private static int nrSecondsBetweenGossipRounds = 1;
 
-    private final Map<String,Socket> neighbors;
+    private final Map<String,Node> neighbors;
     private final Map<String,Integer> rumours;
     private final Queue<Message> writeQueue;
     private final Server server;
@@ -32,16 +33,18 @@ public class Gossiper implements Runnable{
         StringBuilder syncMessageBuilder = new StringBuilder("SYNC_TOPOLOGY ");
         for(String neighborID:neighbors.keySet()){
             if(neighborID.equals(neighborToSyncWithID)){
-                Socket neighborToSyncWith = neighbors.get(neighborID);
-
-                syncMessageBuilder.append(neighborID).append(' ').append(',');
+                Node neighborToSyncWith = neighbors.get(neighborID);
+                InetSocketAddress neighborToSyncWithEndpoint = neighborToSyncWith.getNodeEndpoint();
+                syncMessageBuilder.append(neighborID).append(' ')
+                .append(neighborToSyncWithEndpoint.getHostString()).append(':')
+                .append(neighborToSyncWithEndpoint.getPort()).append(',');
             }
         }
         if (syncMessageBuilder.toString().endsWith(",")) {
             syncMessageBuilder.setLength(syncMessageBuilder.length() - 1);
             String syncMessage = syncMessageBuilder.toString();
             synchronized (writeQueue) {
-                writeQueue.add(new Message(syncMessage, neighbors.get(neighborToSyncWithID)));
+                writeQueue.add(new Message(syncMessage, neighbors.get(neighborToSyncWithID).getSocket()));
             }
         }
     }
@@ -58,9 +61,13 @@ public class Gossiper implements Runnable{
             for (int i = 0; i < nrNeighborsToGossipTo && !neighborIDs.isEmpty(); i++) {
                 int neighborToGossipToIdx = ThreadLocalRandom.current().nextInt(0, neighborIDs.size());
                 String neighborToGossipToID = neighborIDs.get(neighborToGossipToIdx);
+                if(neighbors.get(neighborToGossipToID).getSocket()==null){ //neighbor is itself, skip
+                    i--;
+                    continue;
+                }
                 for (String rumour : rumours.keySet()) {
                     synchronized (writeQueue) {
-                        writeQueue.add(new Message("RUMOUR" + " " + rumour, neighbors.get(neighborToGossipToID)));
+                        writeQueue.add(new Message("RUMOUR" + " " + rumour, neighbors.get(neighborToGossipToID).getSocket()));
                     }
                 }
 
@@ -80,7 +87,7 @@ public class Gossiper implements Runnable{
 
     public void addNeighbor(Node neighbor){
         synchronized (this.neighbors) {
-            neighbors.put(neighbor.getId(),neighbor.getSocket());
+            neighbors.put(neighbor.getId(),neighbor);
         }
     }
 
@@ -92,7 +99,7 @@ public class Gossiper implements Runnable{
         return rumours;
     }
 
-    public Map<String,Socket> getNeighbors() {
+    public Map<String,Node> getNeighbors() {
         return neighbors;
     }
 
