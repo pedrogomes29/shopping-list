@@ -122,4 +122,9 @@ public class Server implements AutoCloseable
     public void close() throws Exception {
         stopServer();
     }
+
+    public void removeSocket(Socket socket) {
+        this.socketMap.remove(socket.getSocketId());
+
+    }
 }

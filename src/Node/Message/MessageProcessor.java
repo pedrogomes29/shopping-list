@@ -267,4 +267,9 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
 
 
     }
+
+    protected void closeSocket(Socket socket){
+
+
+    }
 }

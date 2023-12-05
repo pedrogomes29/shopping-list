@@ -6,7 +6,6 @@ import NioChannels.Message.MessageWriter;
 import NioChannels.Server;
 
 import java.io.IOException;
-import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.Selector;
@@ -82,19 +81,31 @@ public class SocketProcessor implements Runnable{
         registerNewConnections();
         takeNewConnections();
         takeNewSockets();
-        readFromSockets();
+        try {
+            readFromSockets();
+        }catch (Exception ex){
+            ex.printStackTrace();
+        }
         writeToSockets();
     }
 
-    public void registerNewConnections() throws IOException {
+
+    public void registerNewConnections() {
         Socket newSocket;
         newSocket = this.connectionQueue.poll();
 
         while(newSocket != null){
-            newSocket.socketChannel.configureBlocking(false);
+            SelectionKey key= null;
+            try {
+                newSocket.socketChannel.configureBlocking(false);
 
-            SelectionKey key = newSocket.socketChannel.register(this.connectorSelector, SelectionKey.OP_CONNECT);
-            key.attach(newSocket);
+                key = newSocket.socketChannel.register(this.connectorSelector, SelectionKey.OP_CONNECT);
+                key.attach(newSocket);
+            }catch (Exception exception){
+                System.err.println("Error: Register connecting");
+                closeSocket(key);
+
+            }
 
             newSocket = this.connectionQueue.poll();
         }
@@ -116,8 +127,9 @@ public class SocketProcessor implements Runnable{
 
             while(keyIterator.hasNext()) {
                 SelectionKey key = keyIterator.next();
+                Socket socket = (Socket) key.attachment();
                 try {
-                    Socket socket = (Socket) key.attachment();
+
                     socket.socketChannel.finishConnect();
 
                     synchronized (this.inboundSocketQueue) {
@@ -125,6 +137,7 @@ public class SocketProcessor implements Runnable{
                     }
                 }catch (Exception exception){
                     System.err.println("Error: Error connecting");
+                    closeSocket(key);
                 }
 
                 keyIterator.remove();
@@ -175,33 +188,43 @@ public class SocketProcessor implements Runnable{
             while(keyIterator.hasNext()) {
                 SelectionKey key = keyIterator.next();
 
-                readFromSocket(key);
+                try {
+                    readFromSocket(key);
+                }catch (IOException e){
+                    System.err.println("Error: read from socket");
+                    closeSocket(key);
 
+                }
                 keyIterator.remove();
             }
             selectedKeys.clear();
         }
     }
 
-    private void closeSocket(SelectionKey key){
+    protected void closeSocket(SelectionKey key){
+        if (key == null)
+            return;
+
         Socket socket = (Socket) key.attachment();
+        if (socket == null)
+            return;
 
         System.out.println("Socket closed: " + socket.getSocketId());
-        this.socketMap.remove(socket.getSocketId());
-        key.attach(null);
-        key.cancel();
-
+        server.removeSocket(socket);
         try {
-            key.channel().close();
+            socket.close();
         } catch (IOException e) {
             System.err.println("Error: IOException while closing socket");
+        }finally {
+            key.cancel();
         }
     }
 
     private void readFromSocket(SelectionKey key) throws IOException {
-
         Socket socket = (Socket) key.attachment();
-        socket.read(this.readByteBuffer);
+
+        int readed = socket.read(this.readByteBuffer);
+        System.out.println(readed);
         socket.messageReader.read(this.readByteBuffer);
         List<Message> fullMessages = socket.messageReader.messages;
         if (!fullMessages.isEmpty()) {
@@ -241,6 +264,7 @@ public class SocketProcessor implements Runnable{
                 SelectionKey key = keyIterator.next();
 
                 Socket socket = (Socket) key.attachment();
+                System.out.println("writeByteBuffer");
                 System.out.println(this.writeByteBuffer);
                 socket.messageWriter.write(this.writeByteBuffer);
 
@@ -257,8 +281,9 @@ public class SocketProcessor implements Runnable{
     }
 
     private void registerNonEmptySockets() throws ClosedChannelException {
-        for(Socket socket : emptyToNonEmptySockets){
-            socket.socketChannel.register(this.writeSelector, SelectionKey.OP_WRITE, socket);
+        for(Socket socket : emptyToNonEmptySockets) {
+            if (socket.socketChannel.isConnected())
+                socket.socketChannel.register(this.writeSelector, SelectionKey.OP_WRITE, socket);
         }
         emptyToNonEmptySockets.clear();
     }
@@ -280,7 +305,7 @@ public class SocketProcessor implements Runnable{
         while(outMessage != null){
             Socket socket = outMessage.getSocket();
 
-            if(socket != null){
+            if(socket != null && !socket.isClosed()){
                 MessageWriter messageWriter = socket.messageWriter;
                 if(messageWriter.isEmpty()){
                     messageWriter.enqueue(outMessage);

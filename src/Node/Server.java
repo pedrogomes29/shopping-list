@@ -116,4 +116,9 @@ public abstract class Server extends NioChannels.Server
         return gossiper.getNeighborIDs().contains(socketID);
     }
 
+    @Override
+    public void removeSocket(Socket socket) {
+        super.removeSocket(socket);
+        gossiper.removeNeightbor(socket);
+    }
 }

@@ -10,9 +10,9 @@ import java.util.concurrent.ThreadLocalRandom;
 public class Gossiper implements Runnable{
 
     private static final int rumour_count = 3;
-    private static int nrNeighborsToGossipTo = 2;
+    private static final int nrNeighborsToGossipTo = 2;
 
-    private static int nrSecondsBetweenGossipRounds = 1;
+    private static final int nrSecondsBetweenGossipRounds = 1;
 
     private final Set<Socket> neighbors;
     private final Map<String,Integer> rumours;
@@ -41,16 +41,18 @@ public class Gossiper implements Runnable{
             for (int i = 0; i < nrNeighborsToGossipTo && !neighborsCopy.isEmpty(); i++) {
                 int neighborToGossipToIdx = ThreadLocalRandom.current().nextInt(0, neighborsCopy.size());
                 Socket neighborToGossipTo = neighborsCopy.get(neighborToGossipToIdx);
-                for (String rumour : rumours.keySet()) {
-                    synchronized (writeQueue) {
-                        writeQueue.add(new Message("RUMOUR" + " " + rumour, neighborToGossipTo));
+                if (neighborToGossipTo.socketChannel.isConnected()) {
+                    for (String rumour : rumours.keySet()) {
+                        synchronized (writeQueue) {
+                            writeQueue.add(new Message("RUMOUR" + " " + rumour, neighborToGossipTo));
+                        }
                     }
                 }
                 neighborsCopy.remove(neighborToGossipToIdx);
             }
 
             try {
-                Thread.sleep(nrSecondsBetweenGossipRounds*1000);
+                Thread.sleep(nrSecondsBetweenGossipRounds* 1000L);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -82,6 +84,12 @@ public class Gossiper implements Runnable{
     public void addNeighborID(String nodeId) {
         synchronized (neighborIDs) {
             neighborIDs.add(nodeId);
+        }
+    }
+
+    public void removeNeightbor(Socket socket) {
+        synchronized (neighborIDs) {
+            neighbors.remove(socket);
         }
     }
 }

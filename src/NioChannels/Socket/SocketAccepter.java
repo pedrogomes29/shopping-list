@@ -40,7 +40,8 @@ public class SocketAccepter implements Runnable{
                 }
 
             } catch(Exception e){
-                System.err.println("Error: Exception while accept new socket" + e.getMessage());
+                System.err.println("Error: Exception while accept new socket");
+                e.printStackTrace(System.err);
             }
 
         }
