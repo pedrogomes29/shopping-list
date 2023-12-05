@@ -6,7 +6,6 @@ import Node.ConsistentHashing.TokenNode;
 import Node.Gossiper.Gossiper;
 import NioChannels.Message.MessageProcessorBuilder;
 import NioChannels.Socket.Socket;
-import Utils.Hasher;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -83,15 +82,15 @@ public abstract class Server extends NioChannels.Server
         return super.connect(inetSocketAddress);
     }
 
-    public Socket connect(String host, int port){
-        return connect(new InetSocketAddress(host, port));
+    public Socket connect(String nodeId,String host, int port){
+        return connect(nodeId,new InetSocketAddress(host, port));
     }
 
 
-    public Socket connect(InetSocketAddress inetSocketAddress) {
+    public Socket connect(String nodeId, InetSocketAddress inetSocketAddress) {
         Socket socket = super.connect(inetSocketAddress);
         if (socket != null)
-            gossiper.addNeighbor(socket);
+            gossiper.addNeighbor(new Node(socket,nodeId));
         return socket;
     }
 
@@ -107,13 +106,12 @@ public abstract class Server extends NioChannels.Server
         return false;
     }
 
-    public void addLBNode(Socket socket,String socketID){
-        gossiper.addNeighbor(socket);
-        gossiper.addNeighborID(socketID);
+    public void addLBNode(Node lbNode){
+        gossiper.addNeighbor(lbNode);
     }
 
     public boolean knowsAboutLBNode(String socketID){
-        return gossiper.getNeighborIDs().contains(socketID);
+        return gossiper.getNeighbors().containsKey(socketID);
     }
 
 }

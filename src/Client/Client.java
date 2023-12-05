@@ -138,7 +138,7 @@ public class Client {
 
         ShoppingListCRDT listCRDT = new ShoppingListCRDT();
         listCRDT.add("bicicleta", 1);
-        listCRDT.add("predro", 2);
+        listCRDT.add("predro", 3);
 
         boolean sent = client.pushList(listCRDT, "listadopedro");
 

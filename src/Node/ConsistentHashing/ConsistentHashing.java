@@ -52,6 +52,7 @@ public class ConsistentHashing {
             int positionToInsert = binarySearch(virtualNodeHash);
             nodeHashes.add(positionToInsert, virtualNodeHash);
         }
+
         return true;
     }
 
@@ -94,6 +95,20 @@ public class ConsistentHashing {
         TokenNode node = hashToNode.get(nodeHash);
         return node.getSocket();
     }
+
+    public String getNthNodeHash(int nodeHashIdx){
+        return nodeHashes.get(nodeHashIdx);
+    }
+
+    public Socket getNthNodeSocket(int nodeHashIdx){
+        String nodeHash = nodeHashes.get(nodeHashIdx);
+        return hashToNode.get(nodeHash).getSocket();
+    }
+
+    public int getNrNodes(){
+        return nodeHashes.size();
+    }
+
 
     public HashMap<String, TokenNode> getHashToNode() {
         return hashToNode;

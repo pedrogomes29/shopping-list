@@ -5,12 +5,9 @@ import Utils.Hasher;
 
 import java.security.NoSuchAlgorithmException;
 
-public class TokenNode {
-    String id;
-    Socket socket;
+public class TokenNode extends Node.Node{
     public TokenNode(Socket nodesocket, String nodeId){
-        this.id = nodeId;
-        this.socket = nodesocket;
+        super(nodesocket,nodeId);
     }
 
     public static String[] getVirtualNodesHashes(String nodeId, int nrVirtualNodesPerNode) throws NoSuchAlgorithmException {
@@ -21,12 +18,5 @@ public class TokenNode {
             hashes[i] = virtualNodeIdHash;
         }
         return hashes;
-    }
-    public String getId(){
-        return this.id;
-    }
-
-    public Socket getSocket(){
-        return this.socket;
     }
 }

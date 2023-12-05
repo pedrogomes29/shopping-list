@@ -12,6 +12,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Queue;
+import Node.Node;
 
 public abstract class MessageProcessor extends NioChannels.Message.MessageProcessor {
 
@@ -21,7 +22,6 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
 
     public void sendMessageToNewNode(Socket socketToNewNode){
         String messageContentToNewNode = "";
-        System.out.println(this.getClass());
         if (this instanceof LoadBalancer.MessageProcessor)
             messageContentToNewNode = "ADD_LB" + " " + getServer().getNodeId();
         else if(this instanceof RingNode.MessageProcessor)
@@ -41,11 +41,11 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         return  (Server) server;
     }
 
-    private Socket getNewNodeSocket(String host, int port, boolean firstOneConnected){
+    private Socket getNewNodeSocket(String nodeID, String host, int port, boolean firstOneConnected){
         if (firstOneConnected)
             return this.message.getSocket();
         else
-            return server.connect(host, port);
+            return getServer().connect(nodeID, host, port);
     }
 
     public String receiveNewNodeWithEndpoint(String newNodeMessage) throws IOException {
@@ -72,10 +72,10 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         try {
             if(Objects.equals(method, "ADD_NODE")){
                 if (!getServer().knowsAboutRingNode(newNodeID)){
-                    Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
+                    Socket socketToNewNode = getNewNodeSocket(newNodeID,newNodeHost,newNodePort,firstOneConnected);
                     TokenNode tokenNode = new TokenNode(socketToNewNode,newNodeID);
                     if (getServer().consistentHashing.addNodeToRing(tokenNode))
-                        getServer().gossiper.addNeighbor(tokenNode.getSocket());
+                        getServer().gossiper.addNeighbor(tokenNode);
 
                     sendMessageToNewNode(socketToNewNode);
                 }
@@ -83,8 +83,8 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
             }
             else if(Objects.equals(method, "ADD_LB")){
                 if (!getServer().knowsAboutLBNode(newNodeID)){
-                    Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
-                    getServer().addLBNode(socketToNewNode,newNodeID);
+                    Socket socketToNewNode = getNewNodeSocket(newNodeID,newNodeHost,newNodePort,firstOneConnected);
+                    getServer().addLBNode(new Node(socketToNewNode,newNodeID));
                     sendMessageToNewNode(socketToNewNode);
                 }
             }
@@ -101,9 +101,10 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
     public void receiveNewNode(String newNodeMessage){
         String newNodeID = newNodeMessage.split(" ")[1];
         try {
+
             TokenNode tokenNode = new TokenNode(message.getSocket(),newNodeID);
             if (getServer().consistentHashing.addNodeToRing(tokenNode))
-                getServer().gossiper.addNeighbor(tokenNode.getSocket());
+                getServer().gossiper.addNeighbor(tokenNode);
 
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
@@ -112,7 +113,7 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
 
     public void receiveNewLB(String newNodeMessage){
         String newNodeID = newNodeMessage.split(" ")[1];
-        getServer().addLBNode(message.getSocket(),newNodeID);
+        getServer().addLBNode(new Node(message.getSocket(),newNodeID));
     }
 
 
@@ -172,6 +173,15 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         }
     }
 
+    public void receiveNeighborIDs(String messageContent) {
+        String[] messageParts = messageContent.split(" ",2);
+        if(messageParts.length<=1)
+            return;
+        String neighborIDs = messageParts[1];
+        String[] neighborIDsParts = neighborIDs.split(",");
+
+    }
+
     @Override
     public void run() {
         String messageContent = new String(message.bytes);
@@ -183,9 +193,12 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
             receiveRumour(rumour);
         }
         else if(messageContent.startsWith("RUMOUR_ACK ")) {
+            receiveRumourACK(messageContent);
+        }
+        else if(messageContent.startsWith("SYNC_TOPOLOGY ")) {
             String[] messageParts = messageContent.split(" ", 2);
-            String rumourACK = messageParts[1];
-            receiveRumourACK(rumourACK);
+            String neighborIDs = messageParts[1];
+            receiveNeighborIDs(neighborIDs);
         }
         else if(messageContent.startsWith("ADD_NODE ")) {
             receiveNewNode(messageContent);

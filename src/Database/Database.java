@@ -3,6 +3,8 @@ package Database;
 import java.io.File;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import static javax.management.remote.JMXConnectorFactory.connect;
 
@@ -50,16 +52,22 @@ public class Database {
         return null;
     }
 
-    public ArrayList<String> getShoppingListsBytes(String startingHash, String endingHash){
-        String selectSQL = "SELECT * FROM shopping_lists WHERE hash>=? AND hash<=?";
-        ArrayList<String> shoppingListsBase64 = new ArrayList<>();
+    public Map<String,String> getShoppingListsBase64(String startingHash, String endingHash){
+        String selectSQL;
+        if(startingHash.compareTo(endingHash)>0)
+            selectSQL = "SELECT * FROM shopping_lists WHERE hash>=? AND hash<=?";
+        else
+            selectSQL = "SELECT * FROM shopping_lists WHERE hash>=? OR hash<=?";
+        HashMap<String,String> shoppingListsBase64 = new HashMap<>();
         try (PreparedStatement pstmt = connection.prepareStatement(selectSQL)) {
             pstmt.setString(1, startingHash);
             pstmt.setString(2, endingHash);
             try (ResultSet resultSet = pstmt.executeQuery()) {
                 while (resultSet.next()) {
                     String shoppingListBase64 = resultSet.getString("shopping_list");
-                    shoppingListsBase64.add(shoppingListBase64);
+                    String shoppingListID = resultSet.getString("id");
+
+                    shoppingListsBase64.put(shoppingListID,shoppingListBase64);
                 }
             }
         }
