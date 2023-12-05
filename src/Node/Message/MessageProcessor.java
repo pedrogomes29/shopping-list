@@ -8,7 +8,6 @@ import NioChannels.Socket.Socket;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Queue;
@@ -69,53 +68,48 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
             firstOneConnected = true;
         }
 
-        try {
-            if(Objects.equals(method, "ADD_NODE")){
-                if (!getServer().knowsAboutRingNode(newNodeID)){
-                    Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
-                    InetSocketAddress newNodeEndpointSocketAddress = new InetSocketAddress(newNodeHost, newNodePort);
-                    TokenNode tokenNode = new TokenNode(socketToNewNode,newNodeID,newNodeEndpointSocketAddress);
-                    if (getServer().consistentHashing.addNodeToRing(tokenNode))
-                        getServer().gossiper.addNeighbor(tokenNode);
+        if(Objects.equals(method, "ADD_NODE")){
+            if (!getServer().knowsAboutRingNode(newNodeID)){
+                Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
+                InetSocketAddress newNodeEndpointSocketAddress = new InetSocketAddress(newNodeHost, newNodePort);
+                TokenNode tokenNode = new TokenNode(socketToNewNode,newNodeID,newNodeEndpointSocketAddress);
+                if (getServer().consistentHashing.addNodeToRing(tokenNode))
+                    getServer().gossiper.addNeighbor(tokenNode);
 
-                    sendMessageToNewNode(socketToNewNode);
-                }
-
-            }
-            else if(Objects.equals(method, "ADD_LB")){
-                if (!getServer().knowsAboutLBNode(newNodeID)){
-                    Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
-                    InetSocketAddress newNodeEndpointSocketAddress = new InetSocketAddress(newNodeHost, newNodePort);
-                    Node node = new Node(socketToNewNode,newNodeID,newNodeEndpointSocketAddress);
-                    getServer().addLBNode(node);
-                    sendMessageToNewNode(socketToNewNode);
-                }
+                sendMessageToNewNode(socketToNewNode);
             }
 
-
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+        }
+        else if(Objects.equals(method, "ADD_LB")){
+            if (!getServer().knowsAboutLBNode(newNodeID)){
+                Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
+                InetSocketAddress newNodeEndpointSocketAddress = new InetSocketAddress(newNodeHost, newNodePort);
+                Node node = new Node(socketToNewNode,newNodeID,newNodeEndpointSocketAddress);
+                getServer().addLBNode(node);
+                sendMessageToNewNode(socketToNewNode);
+            }
         }
 
         return method + " " + newNodeID + " " + newNodeHost + ":" + newNodePort;
-
     }
 
     public void receiveNewNode(String newNodeMessage){
         String newNodeID = newNodeMessage.split(" ")[1];
         int newNodePort = Integer.parseInt(newNodeMessage.split(" ")[2]);
+
+        InetSocketAddress address = null;
         try {
-            InetSocketAddress address = (InetSocketAddress) this.message.getSocket().socketChannel.getRemoteAddress();
-            String newNodeHost = address.getHostString();
-
-            InetSocketAddress newNodeEndpoint = new InetSocketAddress(newNodeHost,newNodePort);
-            TokenNode tokenNode = new TokenNode(message.getSocket(),newNodeID, newNodeEndpoint);
-            if (getServer().consistentHashing.addNodeToRing(tokenNode))
-                getServer().gossiper.addNeighbor(tokenNode);
-
-        } catch (NoSuchAlgorithmException | IOException e) {
+            address = (InetSocketAddress) this.message.getSocket().socketChannel.getRemoteAddress();
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        String newNodeHost = address.getHostString();
+
+        InetSocketAddress newNodeEndpoint = new InetSocketAddress(newNodeHost,newNodePort);
+        TokenNode tokenNode = new TokenNode(message.getSocket(),newNodeID, newNodeEndpoint);
+        if (getServer().consistentHashing.addNodeToRing(tokenNode))
+            getServer().gossiper.addNeighbor(tokenNode);
+
     }
 
     public void receiveNewLB(String newNodeMessage) {
@@ -136,7 +130,6 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
     }
 
 
-
     public void receiveRumour(String rumour){
         Socket rumourSender = message.getSocket();
         Queue<Message> messageQueue = this.server.getWriteQueue();
@@ -154,12 +147,11 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
                 else
                     alreadyReceivedRumour = getServer().knowsAboutLBNode(nodeID);
 
-
                 newrumour = receiveNewNodeWithEndpoint(rumour);
 
-
-            } catch (IOException | NoSuchAlgorithmException e) {
-                throw new RuntimeException(e);
+            } catch (IOException e) {
+                System.err.println("Error: received rumour, but cant get address of the sender");
+                return;
             }
         }
 
@@ -199,36 +191,48 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         String neighborIDs = messageParts[1];
         String[] neighborIDsParts = neighborIDs.split(",");
 
+        //todo
     }
 
+    /**
+     * Process incoming messages, identifies the message type,
+     * and invokes the appropriate handler methods based on the message type.
+     */
     @Override
     public void run() {
         String messageContent = new String(message.bytes);
 
-        if(messageContent.startsWith("RUMOUR ")) {
-            // first one send
-            String[] messageParts = messageContent.split(" ", 2);
-            String rumour = messageParts[1];
-            receiveRumour(rumour);
-        }
-        else if(messageContent.startsWith("RUMOUR_ACK ")) {
-            receiveRumourACK(messageContent);
-        }
-        else if(messageContent.startsWith("SYNC_TOPOLOGY ")) {
-            String[] messageParts = messageContent.split(" ", 2);
-            String neighborIDs = messageParts[1];
-            receiveNeighborIDs(neighborIDs);
-        }
-        else if(messageContent.startsWith("ADD_NODE ")) {
-            receiveNewNode(messageContent);
-        }else if(messageContent.startsWith("ADD_LB ")) {
-            receiveNewLB(messageContent);
-        }else if(messageContent.startsWith("PUT ") || messageContent.startsWith("GET ")){
-            receivePutGet(message);
-        }else if(messageContent.startsWith("PUT_ACK")){
-            receiveReply(messageContent, 2);
-        }else if(messageContent.startsWith("GET_RESPONSE")){
-            receiveReply(messageContent, 3);
+        String[] messageParts = messageContent.split(" ", 2);
+        String messageType = messageParts[0];
+
+        switch (messageType) {
+            case "RUMOUR":
+                receiveRumour(messageParts[1]);
+                break;
+            case "RUMOUR_ACK":
+                receiveRumourACK(messageParts[1]);
+                break;
+            case "SYNC_TOPOLOGY":
+                receiveNeighborIDs(messageParts[1]);
+                break;
+            case "ADD_NODE":
+                receiveNewNode(messageContent);
+                break;
+            case "ADD_LB":
+                receiveNewLB(messageContent);
+                break;
+            case "PUT":
+            case "GET":
+                receivePutGet(message);
+                break;
+            case "GET_NACK":
+            case "PUT_ACK":
+                receiveReply(messageContent, 2);
+                break;
+            case "PUT_NACK":
+            case "GET_RESPONSE":
+                receiveReply(messageContent, 3);
+                break;
         }
     }
 
@@ -296,7 +300,6 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         synchronized (messageQueue) {
             messageQueue.offer(message);
         }
-
-
     }
+
 }

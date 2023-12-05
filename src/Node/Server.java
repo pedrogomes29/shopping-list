@@ -11,7 +11,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.security.NoSuchAlgorithmException;
 
 import java.util.*;
 
@@ -22,7 +21,6 @@ public abstract class Server extends NioChannels.Server
     public final ConsistentHashing consistentHashing;
     public final Gossiper gossiper;
     private Thread gossiperThread;
-
     private final int nrVirtualNodesPerNode;
 
     public Server(String confFilePath, int port,int nrReplicas,int nrVirtualNodesPerNode, MessageProcessorBuilder messageProcessorBuilder ) throws IOException {
@@ -53,9 +51,13 @@ public abstract class Server extends NioChannels.Server
     }
 
     private void connectToNeighborsFromConf(String confFilePath){
-        try {
-            File myObj = new File(confFilePath);
-            Scanner myReader = new Scanner(myObj);
+        if (confFilePath == null){
+            System.err.println("Warning: Nighbors Conf not provided");
+            return;
+        }
+
+        try (Scanner myReader = new Scanner(new File(confFilePath))){
+
             while (myReader.hasNextLine()) {
                 String line = myReader.nextLine();
                 String[] lineParts = line.split(" ");
@@ -73,8 +75,8 @@ public abstract class Server extends NioChannels.Server
             }
 
             myReader.close();
-        } catch (FileNotFoundException e) {
-
+        }catch (FileNotFoundException e) {
+            System.err.println("Warning: Nighbors Conf " + confFilePath + " not found");
         }
     }
 
@@ -83,7 +85,7 @@ public abstract class Server extends NioChannels.Server
         return  nodeId;
     }
 
-    public boolean knowsAboutRingNode(String nodeID) throws NoSuchAlgorithmException {
+    public boolean knowsAboutRingNode(String nodeID) {
         for(String virtualNodeIDHash:TokenNode.getVirtualNodesHashes(nodeID,nrVirtualNodesPerNode)){
             if(consistentHashing.getHashToNode().containsKey(virtualNodeIDHash))
                 return true;
@@ -99,4 +101,9 @@ public abstract class Server extends NioChannels.Server
         return gossiper.getNeighbors().containsKey(socketID);
     }
 
+    @Override
+    public void removeSocket(Socket socket) {
+        super.removeSocket(socket);
+        gossiper.removeNeightbor(socket);
+    }
 }

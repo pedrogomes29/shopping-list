@@ -1,7 +1,6 @@
 package RingNode;
 
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 
 import Database.Database;
@@ -17,19 +16,21 @@ public class Server extends Node.Server
 
     public Thread synchronizerThread;
 
-    public Server(String confFilePath, int nodePort, int nrReplicas, int nrVirtualNodesPerNode) throws IOException {
+    public Server(String confFilePath, int nodePort, int nrReplicas, int nrVirtualNodesPerNode) throws IOException, SQLException {
         super(confFilePath, nodePort, nrReplicas, nrVirtualNodesPerNode, new MessageProcessorBuilder());
 
+        TokenNode self = new TokenNode(null,nodeId,null);
+        consistentHashing.addNodeToRing(self);
+        gossiper.addNeighbor(self);
+        gossiper.addRumour("ADD_NODE" + " " + nodeId + " " + port );
+        
         try {
-            TokenNode self = new TokenNode(null,nodeId,null);
-            consistentHashing.addNodeToRing(self);
-            gossiper.addNeighbor(self);
-            gossiper.addRumour("ADD_NODE" + " " + nodeId + " " + port );
-            db = new Database("database/"+nodeId+".db");
-            synchronizer = new Synchronizer(this,super.getWriteQueue(),nrReplicas,nrVirtualNodesPerNode);
-        } catch (SQLException | NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            db = new Database("database/" + nodeId + ".db");
+        } catch (SQLException e){
+            throw new SQLException("Conecting to database - " + e.getMessage());
         }
+        
+        synchronizer = new Synchronizer(this,super.getWriteQueue(),nrReplicas,nrVirtualNodesPerNode);
     }
 
     public Database getDB(){
@@ -42,5 +43,11 @@ public class Server extends Node.Server
         synchronizerThread = new Thread(synchronizer);
         synchronizerThread.start();
 
+    }
+
+    @Override
+    public void close() throws Exception {
+        super.close();
+        db.close();
     }
 }

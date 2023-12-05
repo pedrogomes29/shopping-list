@@ -4,14 +4,13 @@ import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) throws IOException {
-
-        boolean debug = false;
-        int port = 8080;
-        String confFile = "conf1.txt";
+        boolean debug = true;
+        int port = 3000;
+        String confFile = "conf0.txt";
         if (!debug){
             port =  Integer.parseInt(args[0]);
-            confFile =  args[1];
-
+            if (args.length==2)
+                confFile =  args[1];
         }
 
         Server server = new Server("conf/" + confFile, port,3, 3);

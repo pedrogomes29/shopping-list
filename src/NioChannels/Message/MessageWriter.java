@@ -45,4 +45,9 @@ public class MessageWriter {
     public boolean isEmpty() {
         return this.writeQueue.isEmpty() && this.messageInProgress == null;
     }
+
+    public void clear(){
+        this.writeQueue.clear();
+        messageInProgress = null;
+    }
 }

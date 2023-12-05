@@ -29,12 +29,8 @@ public class Synchronizer implements Runnable{
     @Override
     public void run() {
         while(server.running) {
-            String[] virtualNodeHashes;
-            try {
-                virtualNodeHashes = TokenNode.getVirtualNodesHashes(server.getNodeId(),nrVirtualNodesPerNode);
-            } catch (NoSuchAlgorithmException e) {
-                throw new RuntimeException(e);
-            }
+            String[] virtualNodeHashes = TokenNode.getVirtualNodesHashes(server.getNodeId(),nrVirtualNodesPerNode);
+
             int nrNodes = server.consistentHashing.getNrNodes();
 
 
@@ -90,12 +86,8 @@ public class Synchronizer implements Runnable{
 
                     for (String shoppingListID : shoppingListsBase64.keySet()) {
                         String shoppingList = shoppingListsBase64.get(shoppingListID);
-                        String shoppingListHash;
-                        try {
-                            shoppingListHash = Hasher.md5(shoppingList);
-                        } catch (NoSuchAlgorithmException e) {
-                            throw new RuntimeException(e);
-                        }
+                        String shoppingListHash = Hasher.md5(shoppingList);
+
                         synchronizationMessageBuilder.append(shoppingListID).append(":").append(shoppingListHash).append(',');
                     }
 

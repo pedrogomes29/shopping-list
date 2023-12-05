@@ -30,7 +30,8 @@ public class Serializer {
             out.flush();
             return bos.toByteArray();
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Error when serialize object: ");
+            e.printStackTrace(System.err);
             return null;
         }
     }
@@ -40,7 +41,8 @@ public class Serializer {
              ObjectInputStream in = new ObjectInputStream(bis)) {
             return in.readObject();
         } catch (IOException | ClassNotFoundException e) {
-            e.printStackTrace();
+            System.err.println("Error when deserialize object: ");
+            e.printStackTrace(System.err);
             return null;
         }
     }
