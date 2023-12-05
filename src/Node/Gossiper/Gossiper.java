@@ -32,7 +32,9 @@ public class Gossiper implements Runnable{
         StringBuilder syncMessageBuilder = new StringBuilder("SYNC_TOPOLOGY ");
         for(String neighborID:neighbors.keySet()){
             if(neighborID.equals(neighborToSyncWithID)){
-                syncMessageBuilder.append(neighborID).append(',');
+                Socket neighborToSyncWith = neighbors.get(neighborID);
+
+                syncMessageBuilder.append(neighborID).append(' ').append(',');
             }
         }
         if (syncMessageBuilder.toString().endsWith(",")) {

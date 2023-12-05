@@ -21,7 +21,7 @@ public class Server extends Node.Server
         super(confFilePath, nodePort, nrReplicas, nrVirtualNodesPerNode, new MessageProcessorBuilder());
 
         try {
-            TokenNode self = new TokenNode(null,nodeId);
+            TokenNode self = new TokenNode(null,nodeId,null);
             consistentHashing.addNodeToRing(self);
             gossiper.addRumour("ADD_NODE" + " " + nodeId + " " + port );
 

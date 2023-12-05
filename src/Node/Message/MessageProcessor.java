@@ -23,9 +23,9 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
     public void sendMessageToNewNode(Socket socketToNewNode){
         String messageContentToNewNode = "";
         if (this instanceof LoadBalancer.MessageProcessor)
-            messageContentToNewNode = "ADD_LB" + " " + getServer().getNodeId();
+            messageContentToNewNode = "ADD_LB" + " " + getServer().getNodeId() + " " + getServer().port;
         else if(this instanceof RingNode.MessageProcessor)
-            messageContentToNewNode = "ADD_NODE" + " " + getServer().getNodeId();
+            messageContentToNewNode = "ADD_NODE" + " " + getServer().getNodeId()  + " " + getServer().port;
 
         if(!messageContentToNewNode.isEmpty()) {
             Queue<Message> messageQueue = getServer().getWriteQueue();
@@ -41,11 +41,11 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         return  (Server) server;
     }
 
-    private Socket getNewNodeSocket(String nodeID, String host, int port, boolean firstOneConnected){
+    private Socket getNewNodeSocket(String host, int port, boolean firstOneConnected){
         if (firstOneConnected)
             return this.message.getSocket();
         else
-            return getServer().connect(nodeID, host, port);
+            return getServer().connect(host, port);
     }
 
     public String receiveNewNodeWithEndpoint(String newNodeMessage) throws IOException {
@@ -72,8 +72,9 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         try {
             if(Objects.equals(method, "ADD_NODE")){
                 if (!getServer().knowsAboutRingNode(newNodeID)){
-                    Socket socketToNewNode = getNewNodeSocket(newNodeID,newNodeHost,newNodePort,firstOneConnected);
-                    TokenNode tokenNode = new TokenNode(socketToNewNode,newNodeID);
+                    Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
+                    InetSocketAddress newNodeEndpointSocketAddress = new InetSocketAddress(newNodeHost, newNodePort);
+                    TokenNode tokenNode = new TokenNode(socketToNewNode,newNodeID,newNodeEndpointSocketAddress);
                     if (getServer().consistentHashing.addNodeToRing(tokenNode))
                         getServer().gossiper.addNeighbor(tokenNode);
 
@@ -83,8 +84,10 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
             }
             else if(Objects.equals(method, "ADD_LB")){
                 if (!getServer().knowsAboutLBNode(newNodeID)){
-                    Socket socketToNewNode = getNewNodeSocket(newNodeID,newNodeHost,newNodePort,firstOneConnected);
-                    getServer().addLBNode(new Node(socketToNewNode,newNodeID));
+                    Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
+                    InetSocketAddress newNodeEndpointSocketAddress = new InetSocketAddress(newNodeHost, newNodePort);
+                    Node node = new Node(socketToNewNode,newNodeID,newNodeEndpointSocketAddress);
+                    getServer().addLBNode(node);
                     sendMessageToNewNode(socketToNewNode);
                 }
             }
@@ -100,20 +103,36 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
 
     public void receiveNewNode(String newNodeMessage){
         String newNodeID = newNodeMessage.split(" ")[1];
+        int newNodePort = Integer.parseInt(newNodeMessage.split(" ")[2]);
         try {
+            InetSocketAddress address = (InetSocketAddress) this.message.getSocket().socketChannel.getRemoteAddress();
+            String newNodeHost = address.getHostString();
 
-            TokenNode tokenNode = new TokenNode(message.getSocket(),newNodeID);
+            InetSocketAddress newNodeEndpoint = new InetSocketAddress(newNodeHost,newNodePort);
+            TokenNode tokenNode = new TokenNode(message.getSocket(),newNodeID, newNodeEndpoint);
             if (getServer().consistentHashing.addNodeToRing(tokenNode))
                 getServer().gossiper.addNeighbor(tokenNode);
 
-        } catch (NoSuchAlgorithmException e) {
+        } catch (NoSuchAlgorithmException | IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public void receiveNewLB(String newNodeMessage){
+    public void receiveNewLB(String newNodeMessage) {
         String newNodeID = newNodeMessage.split(" ")[1];
-        getServer().addLBNode(new Node(message.getSocket(),newNodeID));
+        int newNodePort = Integer.parseInt(newNodeMessage.split(" ")[2]);
+
+        InetSocketAddress address = null;
+        try {
+            address = (InetSocketAddress) this.message.getSocket().socketChannel.getRemoteAddress();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        String newNodeHost = address.getHostString();
+        InetSocketAddress newNodeEndpoint = new InetSocketAddress(newNodeHost,newNodePort);
+
+        Node lbNode = new Node(message.getSocket(),newNodeID, newNodeEndpoint);
+        getServer().addLBNode(lbNode);
     }
 
 

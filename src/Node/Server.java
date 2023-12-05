@@ -58,41 +58,26 @@ public abstract class Server extends NioChannels.Server
             Scanner myReader = new Scanner(myObj);
             while (myReader.hasNextLine()) {
                 String line = myReader.nextLine();
-                String[] lineParts = line.split(":");
+                String[] lineParts = line.split(" ");
 
-                String host = lineParts[0];
-                int port = Integer.parseInt(lineParts[1]);
+                String neighborID = lineParts[0];
+                String neighborEndpoint = lineParts[1];
+                String[] neighborEndpointParts = neighborEndpoint.split(":");
 
-                InetSocketAddress currentNeighborAddress = new InetSocketAddress(host,port);
-                connect(currentNeighborAddress);
+                String neighborHost = neighborEndpointParts[0];
+                int neighborPort = Integer.parseInt(neighborEndpointParts[1]);
 
+                InetSocketAddress currentNeighborAddress = new InetSocketAddress(neighborHost,neighborPort);
+                Socket socket = this.connect(currentNeighborAddress);
+                gossiper.addNeighbor(new Node(socket,neighborID,currentNeighborAddress));
             }
+
             myReader.close();
         } catch (FileNotFoundException e) {
 
         }
     }
 
-
-    public Socket connectWithoutAddingNeighbor(String host, int port){
-        return connectWithoutAddingNeighbor(new InetSocketAddress(host, port));
-    }
-
-    public Socket connectWithoutAddingNeighbor(InetSocketAddress inetSocketAddress) {
-        return super.connect(inetSocketAddress);
-    }
-
-    public Socket connect(String nodeId,String host, int port){
-        return connect(nodeId,new InetSocketAddress(host, port));
-    }
-
-
-    public Socket connect(String nodeId, InetSocketAddress inetSocketAddress) {
-        Socket socket = super.connect(inetSocketAddress);
-        if (socket != null)
-            gossiper.addNeighbor(new Node(socket,nodeId));
-        return socket;
-    }
 
     public String getNodeId() {
         return  nodeId;
