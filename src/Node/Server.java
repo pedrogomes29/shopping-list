@@ -74,7 +74,6 @@ public abstract class Server extends NioChannels.Server
                 gossiper.addNeighbor(new Node(socket,neighborID,currentNeighborAddress));
             }
 
-            myReader.close();
         }catch (FileNotFoundException e) {
             System.err.println("Warning: Nighbors Conf " + confFilePath + " not found");
         }
@@ -87,7 +86,7 @@ public abstract class Server extends NioChannels.Server
 
     public boolean knowsAboutRingNode(String nodeID) {
         for(String virtualNodeIDHash:TokenNode.getVirtualNodesHashes(nodeID,nrVirtualNodesPerNode)){
-            if(consistentHashing.getHashToNode().containsKey(virtualNodeIDHash))
+            if(consistentHashing.containsHash(virtualNodeIDHash))
                 return true;
         }
         return false;
@@ -105,5 +104,7 @@ public abstract class Server extends NioChannels.Server
     public void removeSocket(Socket socket) {
         super.removeSocket(socket);
         gossiper.removeNeightbor(socket);
+
+        consistentHashing.markTemporaryNode(socket);
     }
 }

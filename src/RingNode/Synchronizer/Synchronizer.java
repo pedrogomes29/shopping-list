@@ -13,7 +13,6 @@ import java.util.concurrent.ThreadLocalRandom;
 public class Synchronizer implements Runnable{
     private final int nrReplicas;
     private final int nrVirtualNodesPerNode;
-
     private final Queue<Message> writeQueue;
     private final Server server;
     private final static int nrSecondsBetweenSynchronization = 5;
@@ -56,9 +55,9 @@ public class Synchronizer implements Runnable{
 
                     virtualNodeNeighborIdx = Math.floorMod(virtualNodeIdx + virtualNodeIdxOffset, nrNodes);
                     neighbor = server.consistentHashing.getNthNodeSocket(virtualNodeNeighborIdx);
+                    TokenNode node = server.consistentHashing.getNode(virtualNodeNeighborIdx);
 
-
-                    if (neighbor != null) {
+                    if (neighbor != null && node.isActive()) {
                         break;  // Exit the loop if a socket is retrieved
                     } else {
                         // Remove the used offset from the list

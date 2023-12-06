@@ -5,6 +5,7 @@ import NioChannels.Socket.Socket;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class ConsistentHashing {
@@ -12,13 +13,16 @@ public class ConsistentHashing {
     private final int nrReplicas;
     private final int nrVirtualNodesPerNode;
     private final ArrayList<String> nodeHashes;
-    private final HashMap<String, TokenNode> hashToNode;
+    private final ConcurrentHashMap<String, TokenNode> hashToNode;
+    private final ConcurrentHashMap<Socket, TokenNode> socketToToken;
+
 
     public ConsistentHashing(int nrReplicas, int nrVirtualNodesPerNode){
         this.nrReplicas = nrReplicas;
         this.nrVirtualNodesPerNode = nrVirtualNodesPerNode;
         this.nodeHashes = new ArrayList<>();
-        this.hashToNode = new HashMap<>();
+        this.hashToNode = new ConcurrentHashMap<>();
+        this.socketToToken = new ConcurrentHashMap<>();
     }
 
     public int binarySearch(String hash) {
@@ -43,16 +47,27 @@ public class ConsistentHashing {
     public synchronized boolean addNodeToRing(TokenNode node){
         String[] virtualNodeHashes = TokenNode.getVirtualNodesHashes(node.getId(),nrVirtualNodesPerNode);
         for(String virtualNodeHash:virtualNodeHashes) {
-            if (hashToNode.containsKey(virtualNodeHash))
-                return false;
+            boolean newHash = hashToNode.containsKey(virtualNodeHash);
 
             hashToNode.put(virtualNodeHash, node);
-            int positionToInsert = binarySearch(virtualNodeHash);
-            nodeHashes.add(positionToInsert, virtualNodeHash);
+            addTokenSocket(node.getSocket(), node);
+
+            if (newHash) {
+                int positionToInsert = binarySearch(virtualNodeHash);
+                nodeHashes.add(positionToInsert, virtualNodeHash);
+            }
         }
 
         return true;
     }
+
+    private void addTokenSocket(Socket socket, TokenNode node){
+        if (socket == null)
+            return;
+
+        socketToToken.put(socket, node);
+    }
+
 
 
     public boolean isObjectReplica(String nodeId, String objectId){
@@ -84,12 +99,15 @@ public class ConsistentHashing {
         String objectID = new String(message.bytes).split(" ")[1];
         String idHash = Utils.Hasher.md5(objectID);
         int firstNodeToStoreIdx = binarySearch(idHash);
+        int randomChoice = ThreadLocalRandom.current().nextInt(nrReplicas);
+        TokenNode node;
+        int i = 0;
+        do {
+            int choice = firstNodeToStoreIdx + (randomChoice+i)%nrReplicas;
+            String nodeHash = nodeHashes.get(choice % nrNodes);
+            node = hashToNode.get(nodeHash);
+        }while(!node.isActive());
 
-        int randomChoice = ThreadLocalRandom.current().nextInt(firstNodeToStoreIdx, firstNodeToStoreIdx+nrReplicas-1);
-
-        System.out.println("Random " + randomChoice + " total " + firstNodeToStoreIdx);
-        String nodeHash = nodeHashes.get(randomChoice%nrNodes );
-        TokenNode node = hashToNode.get(nodeHash);
         return node.getSocket();
     }
 
@@ -106,7 +124,24 @@ public class ConsistentHashing {
         return nodeHashes.size();
     }
 
-    public HashMap<String, TokenNode> getHashToNode() {
-        return hashToNode;
+    public boolean containsHash(String virtualNodeIDHash) {
+        TokenNode node = hashToNode.get(virtualNodeIDHash);
+
+        return node != null && node.isActive();
+    }
+
+    public TokenNode getNode(int i){
+        String nodeHash = nodeHashes.get(i % nodeHashes.size());
+        return  hashToNode.get(nodeHash);
+    }
+
+    public void markTemporaryNode(Socket socket) {
+        if (socket == null) return;
+
+        TokenNode token = socketToToken.get(socket);
+        if (token == null) return;
+
+        token.setActive(false);
+        socketToToken.remove(socket);
     }
 }
