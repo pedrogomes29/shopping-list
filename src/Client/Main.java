@@ -17,6 +17,7 @@ import Utils.Serializer;
 public class Main {
 
     private static final Scanner scan = new Scanner(System.in);
+    private final Client client = new Client();
 
     private void createShoppingList() throws IOException {
         System.out.println("What name should we give to your shopping list?");
@@ -32,6 +33,10 @@ public class Main {
         System.out.println("What's the link of the shopping list you wish to access?");
         String listLink = scan.nextLine();
         ShoppingListCRDT shoppingListCRDT = parseShoppingList(listLink);
+        if (shoppingListCRDT == null) { // shopping list was not found
+            System.out.println("Shopping list " + listLink + " was not found");
+            return;
+        }
         this.editList(shoppingListCRDT, listLink);
     }
 
@@ -44,13 +49,10 @@ public class Main {
             String content = Files.readString(shoppingListFile.toPath());
             shoppingList = (ShoppingListCRDT) Serializer.deserializeBase64(content);
         } else {
-            // TODO: pull file
-            //shoppingList.createNewID();
-
-            shoppingList = new ShoppingListCRDT();
-            shoppingList.add("eggs", 6);
-            shoppingList.add("salt", 2);
-            shoppingList.add("sugar", 1);
+            shoppingList = client.getList(listLink);
+            if (shoppingList != null) {
+                shoppingList.createNewID();
+            }
         }
         return shoppingList;
     }
@@ -100,9 +102,24 @@ public class Main {
                         option = -1;
                     }
                 }
-                case 4 -> { // TODO: pull
+                case 4 -> {
+                    ShoppingListCRDT shoppingList2 = this.client.getList(listLink);
+                    if (shoppingList2 != null){
+                        shoppingListCRDT.merge(shoppingList2);
+                    } else {
+                        System.out.println("List " + listLink + " doesn't exist on the cloud");
+                        option = -1;
+                    }
                 }
-                case 5 -> { // TODO: push
+                case 5 -> {
+                    boolean sent = this.client.pushList(shoppingListCRDT, listLink);
+                    if(!sent) {
+                        System.out.println("Error sending your shopping list.");
+                        option = -1;
+                    }
+                    else {
+                        System.out.println("List " + listLink + " was successfully sent.");
+                    }
                 }
                 case 0 -> System.out.println("\nThank you for using our system");
                 default -> {

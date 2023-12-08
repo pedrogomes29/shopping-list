@@ -47,9 +47,7 @@ public class CCounter implements Serializable {
     }
 
     public void setReplicaID(String replicaID) {
-        this.observedCounters.put(replicaID, this.observedCounters.get(this.replicaID));
         this.replicaID = replicaID;
-        this.observedIDs.put(replicaID, this.version);
     }
 
     public void setObservedIDs(Map<String, Integer> observedIDs) {
@@ -64,14 +62,14 @@ public class CCounter implements Serializable {
         this.itemQuantity = this.itemQuantity + quantity;
         this.version++;
         this.observedIDs.put(this.replicaID, this.version);
-        this.observedCounters.put(this.replicaID, this.observedCounters.get(this.replicaID) + quantity);
+        this.observedCounters.put(this.replicaID, this.observedCounters.getOrDefault(this.replicaID, 0) + quantity);
     }
 
     public void decrement(int quantity) {
         this.itemQuantity = this.itemQuantity - quantity;
         this.version++;
         this.observedIDs.put(this.replicaID, this.version);
-        this.observedCounters.put(this.replicaID, this.observedCounters.get(this.replicaID) - quantity);
+        this.observedCounters.put(this.replicaID, this.observedCounters.getOrDefault(this.replicaID, 0) - quantity);
     }
 
     public void merge(CCounter cCounter) {
