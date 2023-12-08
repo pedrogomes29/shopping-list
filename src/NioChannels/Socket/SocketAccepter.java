@@ -24,8 +24,8 @@ public class SocketAccepter implements Runnable{
         try{
             serverSocket = ServerSocketChannel.open();
             serverSocket.bind(new InetSocketAddress(server.port));
-        } catch(Exception e){
-            System.err.println("Erro: Cannot bind port " + server.port + ". " + e.getMessage());
+        } catch(IOException e){
+            e.printStackTrace();
             return;
         }
 
@@ -39,8 +39,8 @@ public class SocketAccepter implements Runnable{
                     this.socketQueue.add(new Socket(socketChannel));
                 }
 
-            }catch(Exception e){
-                System.err.println("Error: Exception while accept new socket " + e.getMessage());
+            } catch(IOException e){
+                e.printStackTrace();
             }
 
         }

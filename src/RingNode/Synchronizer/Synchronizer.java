@@ -4,11 +4,9 @@ import NioChannels.Message.Message;
 import Node.ConsistentHashing.TokenNode;
 import RingNode.Server;
 import NioChannels.Socket.Socket;
-import Utils.Hasher;
 
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class Synchronizer implements Runnable{
     private final int nrReplicas;
@@ -26,84 +24,78 @@ public class Synchronizer implements Runnable{
         this.nrVirtualNodesPerNode = nrVirtualNodesPerNode;
     }
 
+
+    public void sendSynchronize(String startingHash, String endingHash, Socket neighbor){
+        Map<String, String> shoppingListsHashes = server.getDB().getShoppingListsHashes(startingHash, endingHash);
+        StringBuilder synchronizationMessageBuilder = new StringBuilder("SYNCHRONIZE" + " " + startingHash + " " + endingHash + " ");
+
+        for (String shoppingListID : shoppingListsHashes.keySet()) {
+            String shoppingListHash = shoppingListsHashes.get(shoppingListID);
+            synchronizationMessageBuilder.append(shoppingListID).append(":").append(shoppingListHash).append(',');
+        }
+
+        if (!synchronizationMessageBuilder.isEmpty()) {
+            synchronizationMessageBuilder.setLength(synchronizationMessageBuilder.length() - 1);
+        }
+
+        String synchronizationMessage = synchronizationMessageBuilder.toString();
+        synchronized (writeQueue) {
+            writeQueue.add(new Message(synchronizationMessage, neighbor));
+        }
+    }
+
+    public void sync(String virtualNodeHash){
+        int virtualNodeIdx = server.consistentHashing.binarySearch(virtualNodeHash);
+        TokenNode self = server.consistentHashing.getNthNode(virtualNodeIdx);
+        Map<TokenNode,String> realNodesToEndingHash = new HashMap<>();
+        String startingHash = null;
+        for(int offsetIdx=1;offsetIdx<server.consistentHashing.getNrNodes();offsetIdx++){
+            int otherVirtualNodeIdx = Math.floorMod(virtualNodeIdx - offsetIdx,server.consistentHashing.getNrNodes());
+            TokenNode otherVirtualNode = server.consistentHashing.getNthNode(otherVirtualNodeIdx);
+
+            if(otherVirtualNode.equals(self)) {
+                startingHash = server.consistentHashing.getNthNodeHash(otherVirtualNodeIdx);
+                break;
+            }
+            if(!realNodesToEndingHash.containsKey(otherVirtualNode)){
+                if(realNodesToEndingHash.size()==nrReplicas-1){
+                    startingHash = server.consistentHashing.getNthNodeHash(otherVirtualNodeIdx);
+                    break;
+                }
+                else {
+                    String otherVirtualNodeEndingHash = server.consistentHashing.getNthNodeHash(otherVirtualNodeIdx);
+                    realNodesToEndingHash.put(otherVirtualNode, otherVirtualNodeEndingHash);
+                }
+            }
+        }
+
+        for(TokenNode nodeToSyncWith:realNodesToEndingHash.keySet()){
+            sendSynchronize(startingHash, realNodesToEndingHash.get(nodeToSyncWith),nodeToSyncWith.getSocket());
+        }
+    }
+
     @Override
     public void run() {
         while(server.running) {
-            String[] virtualNodeHashes = TokenNode.getVirtualNodesHashes(server.getNodeId(),nrVirtualNodesPerNode);
+            synchronized(server.consistentHashing) {
+                int nrRealNodes = server.consistentHashing.getNrRealNodes();
 
-            int nrNodes = server.consistentHashing.getNrNodes();
-
-
-            for(String virtualNodeHash:virtualNodeHashes) {
-
-                int virtualNodeIdx = server.consistentHashing.binarySearch(virtualNodeHash);
-                List<Integer> availableOffsets = new ArrayList<>();
-
-                for (int i=-nrReplicas+1;i<0;i++) {
-                    availableOffsets.add(i);
-                }
-
-                for (int i=1;i<nrReplicas;i++) {
-                    availableOffsets.add(i);
-                }
-
-                Socket neighbor = null;
-                int virtualNodeIdxOffset = 0,virtualNodeNeighborIdx = 0;
-
-                while (!availableOffsets.isEmpty()) {
-                    int virtualNodeIdxOffsetIndex = ThreadLocalRandom.current().nextInt(availableOffsets.size());
-                    virtualNodeIdxOffset = availableOffsets.get(virtualNodeIdxOffsetIndex);
-
-                    virtualNodeNeighborIdx = Math.floorMod(virtualNodeIdx + virtualNodeIdxOffset, nrNodes);
-                    neighbor = server.consistentHashing.getNthNodeSocket(virtualNodeNeighborIdx);
+                if (nrRealNodes >= nrReplicas) {
+                    String[] virtualNodeHashes;
+                    try {
+                        virtualNodeHashes = TokenNode.getVirtualNodesHashes(server.getNodeId(), nrVirtualNodesPerNode);
+                    } catch (NoSuchAlgorithmException e) {
+                        throw new RuntimeException(e);
+                    }
 
 
-                    if (neighbor != null) {
-                        break;  // Exit the loop if a socket is retrieved
-                    } else {
-                        // Remove the used offset from the list
-                        availableOffsets.remove(virtualNodeIdxOffsetIndex);
+                    for (String virtualNodeHash : virtualNodeHashes) {
+                        sync(virtualNodeHash);
                     }
                 }
-
-                if(neighbor != null) {
-                    int startingHashIdx;
-                    int endingHashIdx;
-
-                    if (virtualNodeIdxOffset < 0) {
-                        startingHashIdx = Math.floorMod(virtualNodeNeighborIdx - nrReplicas - virtualNodeIdxOffset, nrNodes);
-                        endingHashIdx = virtualNodeNeighborIdx;
-                    } else {
-                        startingHashIdx = Math.floorMod(virtualNodeIdx - nrReplicas + virtualNodeIdxOffset, nrNodes);
-                        endingHashIdx = virtualNodeIdx;
-                    }
-
-                    String startingHash = server.consistentHashing.getNthNodeHash(startingHashIdx);
-                    String endingHash = server.consistentHashing.getNthNodeHash(endingHashIdx);
-
-                    Map<String, String> shoppingListsBase64 = server.getDB().getShoppingListsBase64(startingHash, endingHash);
-                    StringBuilder synchronizationMessageBuilder = new StringBuilder("SYNCHRONIZE" + " " + startingHash + " " + endingHash + " ");
-
-                    for (String shoppingListID : shoppingListsBase64.keySet()) {
-                        String shoppingList = shoppingListsBase64.get(shoppingListID);
-                        String shoppingListHash = Hasher.md5(shoppingList);
-
-                        synchronizationMessageBuilder.append(shoppingListID).append(":").append(shoppingListHash).append(',');
-                    }
-
-                    if (!synchronizationMessageBuilder.isEmpty()) {
-                        synchronizationMessageBuilder.setLength(synchronizationMessageBuilder.length() - 1);
-                    }
-
-                    String synchronizationMessage = synchronizationMessageBuilder.toString();
-                    synchronized (writeQueue) {
-                        writeQueue.add(new Message(synchronizationMessage, neighbor));
-                    }
-                }
-
             }
             try {
-                Thread.sleep(nrSecondsBetweenSynchronization*1000);
+                Thread.sleep(nrSecondsBetweenSynchronization * 1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

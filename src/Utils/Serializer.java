@@ -1,11 +1,15 @@
 package Utils;
 
+import ShoppingList.CCounter;
+import ShoppingList.ShoppingListCRDT;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.Base64;
+import java.util.Map;
 
 public class Serializer {
 
@@ -30,10 +34,24 @@ public class Serializer {
             out.flush();
             return bos.toByteArray();
         } catch (IOException e) {
-            System.err.println("Error when serialize object: ");
-            e.printStackTrace(System.err);
+            e.printStackTrace();
             return null;
         }
+    }
+
+    public static String encodeShoppingListCRDTPublicAttributes(ShoppingListCRDT shoppingListCRDT){
+        StringBuilder serializedShoppingList = new StringBuilder();
+        Map<String, CCounter> shoppingList = shoppingListCRDT.getShoppingList();
+        for(String shoppingListItemName:shoppingList.keySet().stream().sorted().toList()){
+            CCounter shoppingListItem = shoppingList.get(shoppingListItemName);
+            serializedShoppingList.append(shoppingListItemName).append(encodeCCounterPublicAttributes(shoppingListItem));
+        }
+        return serializedShoppingList.toString();
+    }
+
+    public static String encodeCCounterPublicAttributes(CCounter counter){
+        return counter.getItemQuantity() + serializeBase64(counter.getObservedIDs()) +
+                serializeBase64(counter.getObservedCounters());
     }
 
     public static Object deserialize(byte[] serializedObjectBytes){
@@ -41,8 +59,7 @@ public class Serializer {
              ObjectInputStream in = new ObjectInputStream(bis)) {
             return in.readObject();
         } catch (IOException | ClassNotFoundException e) {
-            System.err.println("Error when deserialize object: ");
-            e.printStackTrace(System.err);
+            e.printStackTrace();
             return null;
         }
     }

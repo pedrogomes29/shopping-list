@@ -59,17 +59,4 @@ public class Socket {
     public void setSocketId(long socketId) {
         this.socketId = socketId;
     }
-
-
-    public void close() throws IOException {
-        socketChannel.close();
-        messageReader.messages.clear();
-        messageWriter.clear();
-        endOfStreamReached=true;
-    }
-
-    public boolean isClosed() {
-        return  endOfStreamReached;
-
-    }
 }

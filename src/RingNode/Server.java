@@ -1,10 +1,15 @@
 package RingNode;
 
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
+import java.util.Map;
 
 import Database.Database;
+import NioChannels.Message.Message;
+import NioChannels.Socket.Socket;
 import Node.ConsistentHashing.TokenNode;
+import RingNode.ConsistentHashing.ConsistentHashing;
 import RingNode.Synchronizer.Synchronizer;
 import Utils.Hasher;
 
@@ -16,21 +21,31 @@ public class Server extends Node.Server
 
     public Thread synchronizerThread;
 
-    public Server(String confFilePath, int nodePort, int nrReplicas, int nrVirtualNodesPerNode) throws IOException, SQLException {
+    public Server(String confFilePath, int nodePort, int nrReplicas, int nrVirtualNodesPerNode) throws IOException {
         super(confFilePath, nodePort, nrReplicas, nrVirtualNodesPerNode, new MessageProcessorBuilder());
+        this.consistentHashing = new ConsistentHashing(nrReplicas,nrVirtualNodesPerNode,this);
 
-        TokenNode self = new TokenNode(null,nodeId,null);
-        consistentHashing.addNodeToRing(self);
-        gossiper.addNeighbor(self);
-        gossiper.addRumour("ADD_NODE" + " " + nodeId + " " + port );
-        
         try {
-            db = new Database("database/" + nodeId + ".db");
-        } catch (SQLException e){
-            throw new SQLException("Conecting to database - " + e.getMessage());
+            TokenNode self = new TokenNode(null,nodeId,null);
+            ((ConsistentHashing)consistentHashing).addSelfToRing(self);
+            gossiper.addRumour("ADD_NODE" + " " + nodeId + " " + port );
+            db = new Database("database/"+nodeId+".db");
+            synchronizer = new Synchronizer(this,super.getWriteQueue(),nrReplicas,nrVirtualNodesPerNode);
+        } catch (SQLException | NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
         }
-        
-        synchronizer = new Synchronizer(this,super.getWriteQueue(),nrReplicas,nrVirtualNodesPerNode);
+    }
+    public StringBuilder sendShoppingListsToNeighbor(String startingHash, String endingHash){
+        Map<String, String> shoppingLists = getDB().getShoppingListsBase64(startingHash, endingHash);
+        StringBuilder synchronizationMessageBuilder = new StringBuilder("SYNCHRONIZE_RESPONSE" + " ");
+
+        for (String shoppingListID : shoppingLists.keySet()) {
+            String shoppingListBase64 = shoppingLists.get(shoppingListID);
+            synchronizationMessageBuilder.append(shoppingListID).append(":").append(shoppingListBase64).append(',');
+        }
+
+        return synchronizationMessageBuilder;
+
     }
 
     public Database getDB(){
@@ -43,11 +58,5 @@ public class Server extends Node.Server
         synchronizerThread = new Thread(synchronizer);
         synchronizerThread.start();
 
-    }
-
-    @Override
-    public void close() throws Exception {
-        super.close();
-        db.close();
     }
 }
