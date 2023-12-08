@@ -14,26 +14,41 @@ public class MessageProcessor extends NioChannels.Message.MessageProcessor{
     private void dealWithNewLB(String messageContent) throws IOException {
         InetSocketAddress address = (InetSocketAddress) this.message.getSocket().socketChannel.getRemoteAddress();
         String newLBHost = address.getHostString();
-
         int newLBPort = Integer.parseInt(messageContent.split(" ")[1]);
-        ((Server)server).addLoadBalancer(new InetSocketAddress(newLBHost,newLBPort));
+
+        ((Server)server).addLoadBalancer(new InetSocketAddress(newLBHost, newLBPort));
+    }
+
+    private void dealWithNewAdmin(String messageContent) throws IOException {
+        InetSocketAddress address = (InetSocketAddress) this.message.getSocket().socketChannel.getRemoteAddress();
+        String newAdminHost = address.getHostString();
+        int newAdminPort = Integer.parseInt(messageContent.split(" ")[1]);
+
+        ((Server)server).addAdmin(new InetSocketAddress(newAdminHost, newAdminPort));
     }
 
     @Override
     public void run() {
         String messageContent = new String(message.bytes);
-        if(messageContent.startsWith("ADD_LB ")){
+        if (messageContent.startsWith("ADD_LB ")) {
             try {
                 dealWithNewLB(messageContent);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
-        else if(messageContent.equals("WHOIS LB")){
+        else if (messageContent.equals("WHOIS LB")) {
             InetSocketAddress lbAddress = ((Server)server).getLoadBalancer();
             Queue<Message> writeQueue = server.getWriteQueue();
-            synchronized (writeQueue){
+            synchronized (writeQueue) {
                 writeQueue.add(new Message(lbAddress.getHostString()+":"+lbAddress.getPort(),message.getSocket()));
+            }
+        }
+        else if (messageContent.startsWith("ADD_ADMIN ")) {
+            try {
+                dealWithNewAdmin(messageContent);
+            } catch (IOException e) {
+                throw  new RuntimeException(e);
             }
         }
     }

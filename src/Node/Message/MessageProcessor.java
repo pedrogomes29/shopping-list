@@ -24,12 +24,13 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         System.out.println(this.getClass());
         if (this instanceof LoadBalancer.MessageProcessor)
             messageContentToNewNode = "ADD_LB" + " " + getServer().getNodeId();
-        else if(this instanceof RingNode.MessageProcessor)
+        else if (this instanceof Admin.MessageProcessor)
+            messageContentToNewNode = "ADD_ADMIN " + getServer().getNodeId();
+        else if (this instanceof RingNode.MessageProcessor)
             messageContentToNewNode = "ADD_NODE" + " " + getServer().getNodeId();
 
-        if(!messageContentToNewNode.isEmpty()) {
+        if (!messageContentToNewNode.isEmpty()) {
             Queue<Message> messageQueue = getServer().getWriteQueue();
-
             synchronized (messageQueue) {
                 messageQueue.add(new Message(messageContentToNewNode, socketToNewNode));
             }
@@ -62,7 +63,7 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         if (newNodeEndpointParts.length > 1) {
             newNodeHost = newNodeEndpointParts[0];
             newNodePort = Integer.parseInt(newNodeEndpointParts[1]);
-        }else{
+        } else {
             InetSocketAddress address = (InetSocketAddress) this.message.getSocket().socketChannel.getRemoteAddress();
             newNodeHost = address.getHostString();
             newNodePort = Integer.parseInt(newNodeEndpointParts[0]);
@@ -70,35 +71,38 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         }
 
         try {
-            if(Objects.equals(method, "ADD_NODE")){
-                if (!getServer().knowsAboutRingNode(newNodeID)){
+            if (Objects.equals(method, "ADD_NODE")) {
+                if (!getServer().knowsAboutRingNode(newNodeID)) {
                     Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
                     TokenNode tokenNode = new TokenNode(socketToNewNode,newNodeID);
                     if (getServer().consistentHashing.addNodeToRing(tokenNode))
                         getServer().gossiper.addNeighbor(tokenNode.getSocket());
-
                     sendMessageToNewNode(socketToNewNode);
                 }
 
             }
-            else if(Objects.equals(method, "ADD_LB")){
-                if (!getServer().knowsAboutLBNode(newNodeID)){
+            else if (Objects.equals(method, "ADD_LB")) {
+                if (!getServer().knowsAboutLBNode(newNodeID)) {
                     Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
                     getServer().addLBNode(socketToNewNode,newNodeID);
                     sendMessageToNewNode(socketToNewNode);
                 }
             }
-
-
+            else if (Objects.equals(method, "ADD_ADMIN")) {
+                if (!getServer().knowsAboutAdminNode(newNodeID)) {
+                    Socket socketToNewNode = getNewNodeSocket(newNodeHost, newNodePort, firstOneConnected);
+                    getServer().addAdminNode(socketToNewNode, newNodeID);
+                    sendMessageToNewNode(socketToNewNode);
+                }
+            }
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
 
         return method + " " + newNodeID + " " + newNodeHost + ":" + newNodePort;
-
     }
 
-    public void receiveNewNode(String newNodeMessage){
+    public void receiveNewNode(String newNodeMessage) {
         String newNodeID = newNodeMessage.split(" ")[1];
         try {
             TokenNode tokenNode = new TokenNode(message.getSocket(),newNodeID);
@@ -110,62 +114,64 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         }
     }
 
-    public void receiveNewLB(String newNodeMessage){
+    public void receiveNewLB(String newNodeMessage) {
         String newNodeID = newNodeMessage.split(" ")[1];
-        getServer().addLBNode(message.getSocket(),newNodeID);
+        getServer().addLBNode(message.getSocket(), newNodeID);
     }
 
+    public void receiveNewAdmin(String newNodeMessage) {
+        String newNodeID = newNodeMessage.split(" ")[1];
+        getServer().addAdminNode(message.getSocket(), newNodeID);
+    }
 
-
-    public void receiveRumour(String rumour){
+    public void receiveRumour(String rumour) {
         Socket rumourSender = message.getSocket();
         Queue<Message> messageQueue = this.server.getWriteQueue();
         boolean alreadyReceivedRumour = false;
         String newrumour = rumour;
         boolean addRingNodeRumour = rumour.startsWith("ADD_NODE ");
         boolean addLBNodeRumour = rumour.startsWith("ADD_LB ");
+        boolean addAdminNodeRumour = rumour.startsWith("ADD_ADMIN ");
 
-        if(addRingNodeRumour || addLBNodeRumour){
+        if (addRingNodeRumour || addLBNodeRumour || addAdminNodeRumour) {
             try {
                 String nodeID = rumour.split(" ")[1];
-
-                if(addRingNodeRumour)
+                if (addRingNodeRumour)
                     alreadyReceivedRumour = getServer().knowsAboutRingNode(nodeID);
-                else
+                else if (addLBNodeRumour)
                     alreadyReceivedRumour = getServer().knowsAboutLBNode(nodeID);
-
+                else {
+                    alreadyReceivedRumour = getServer().knowsAboutAdminNode(nodeID);
+                }
 
                 newrumour = receiveNewNodeWithEndpoint(rumour);
-
-
             } catch (IOException | NoSuchAlgorithmException e) {
                 throw new RuntimeException(e);
             }
         }
 
         String rumourACK;
-        if(getServer().gossiper.getRumours().containsKey(rumour) || alreadyReceivedRumour){
+        if (getServer().gossiper.getRumours().containsKey(rumour) || alreadyReceivedRumour) {
             rumourACK = "RUMOUR_ACK" + " " + ALREADY_SEEN_RUMOUR.TRUE + " " + rumour;
         }
-        else{
+        else {
             getServer().gossiper.addRumour(newrumour);
             rumourACK = "RUMOUR_ACK" + " " + ALREADY_SEEN_RUMOUR.FALSE + " " + rumour;
         }
 
-        synchronized (messageQueue){
+        synchronized (messageQueue) {
             messageQueue.add(new Message(rumourACK,rumourSender));
         }
-
     }
 
-    public void receiveRumourACK(String rumourACK){
+    public void receiveRumourACK(String rumourACK) {
         String[] rumourACKParts = rumourACK.split(" ",2);
-        boolean alreadySeenRumour =rumourACKParts[0].equals("1");
-        if(alreadySeenRumour){
+        boolean alreadySeenRumour = rumourACKParts[0].equals("1");
+        if (alreadySeenRumour) {
             String rumour =  rumourACKParts[1];
             int rumourCount = getServer().gossiper.getRumours().getOrDefault(rumour, -1);
             rumourCount--;
-            if(rumourCount<=0)
+            if (rumourCount<=0)
                 getServer().gossiper.getRumours().remove(rumour);
             else
                 getServer().gossiper.getRumours().put(rumour,rumourCount);
@@ -176,26 +182,28 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
     public void run() {
         String messageContent = new String(message.bytes);
 
-        if(messageContent.startsWith("RUMOUR ")) {
+        if (messageContent.startsWith("RUMOUR ")) {
             // first one send
             String[] messageParts = messageContent.split(" ", 2);
             String rumour = messageParts[1];
             receiveRumour(rumour);
         }
-        else if(messageContent.startsWith("RUMOUR_ACK ")) {
+        else if (messageContent.startsWith("RUMOUR_ACK ")) {
             String[] messageParts = messageContent.split(" ", 2);
             String rumourACK = messageParts[1];
             receiveRumourACK(rumourACK);
         }
-        else if(messageContent.startsWith("ADD_NODE ")) {
+        else if (messageContent.startsWith("ADD_NODE ")) {
             receiveNewNode(messageContent);
-        }else if(messageContent.startsWith("ADD_LB ")) {
+        } else if (messageContent.startsWith("ADD_LB ")) {
             receiveNewLB(messageContent);
-        }else if(messageContent.startsWith("PUT ") || messageContent.startsWith("GET ")){
+        } else if (messageContent.startsWith("ADD_ADMIN ")) {
+            receiveNewAdmin(messageContent);
+        } else if (messageContent.startsWith("PUT ") || messageContent.startsWith("GET ")){
             receivePutGet(message);
-        }else if(messageContent.startsWith("PUT_ACK")){
+        } else if (messageContent.startsWith("PUT_ACK")){
             receiveReply(messageContent, 2);
-        }else if(messageContent.startsWith("GET_RESPONSE")){
+        } else if (messageContent.startsWith("GET_RESPONSE")){
             receiveReply(messageContent, 3);
         }
     }
@@ -210,14 +218,14 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
     private void receiveReply(String messageContent, int dataLength) {
         String[] messageParts = messageContent.split(" ");
 
-        if (messageParts.length > dataLength){
+        if (messageParts.length > dataLength) {
             String redirectSocketID = messageParts[messageParts.length-1];
             Socket redirectSocket = server.getSocketMap().get(Long.parseLong(redirectSocketID));
 
             Queue<Message> messageQueue = this.server.getWriteQueue();
 
             // redirect the message to the socket
-            String[] messagesWithoutRedirect =Arrays.copyOfRange(messageParts, 0, messageParts.length - 1);
+            String[] messagesWithoutRedirect = Arrays.copyOfRange(messageParts, 0, messageParts.length - 1);
             String messageContentWithoutRedirect = String.join(" ", messagesWithoutRedirect);
 
             Message message = new Message(messageContentWithoutRedirect, redirectSocket);
@@ -225,7 +233,7 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
                 messageQueue.offer(message);
             }
 
-        }else {
+        } else {
             throw new RuntimeException("ACK MESSAGE WITHOUT REDIRECT");
         }
     }
@@ -247,7 +255,6 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
      */
     protected abstract Socket isToRedirectMessage(Message message);
 
-
     /**
      * Redirects a message to a specified node and appends the original socket ID to the end of the message.
      * This allows the response to travel back to the origin node.
@@ -264,7 +271,5 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         synchronized (messageQueue) {
             messageQueue.offer(message);
         }
-
-
     }
 }

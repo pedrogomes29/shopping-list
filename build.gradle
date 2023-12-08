@@ -18,6 +18,13 @@ sourceSets {
     }
 }
 
+tasks.register('Admin', JavaExec) {
+    main = 'Admin.Main'
+    classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath
+    standardInput = System.in
+    args project.port, project.filePath
+}
+
 tasks.register('LoadBalancer', JavaExec) {
     main = 'LoadBalancer.Main'
     classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath

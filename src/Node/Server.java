@@ -1,24 +1,20 @@
 package Node;
 
-
 import Node.ConsistentHashing.ConsistentHashing;
 import Node.ConsistentHashing.TokenNode;
 import Node.Gossiper.Gossiper;
 import NioChannels.Message.MessageProcessorBuilder;
 import NioChannels.Socket.Socket;
-import Utils.Hasher;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.security.NoSuchAlgorithmException;
-
 import java.util.*;
 
 
-public abstract class Server extends NioChannels.Server
-{
+public abstract class Server extends NioChannels.Server  {
     protected String nodeId;
     public final ConsistentHashing consistentHashing;
     public final Gossiper gossiper;
@@ -37,23 +33,23 @@ public abstract class Server extends NioChannels.Server
         connectToNeighborsFromConf(confFilePath);
     }
 
-    public void stopServer() throws InterruptedException
-    {
+    public ConsistentHashing getConsistentHashing() {
+        return this.consistentHashing;
+    }
+
+    public void stopServer() throws InterruptedException {
         super.stopServer();
         gossiperThread.interrupt();
         gossiperThread.join();
-
     }
 
-    public void startThreads()
-    {
+    public void startThreads() {
         super.startThreads();
         gossiperThread = new Thread(gossiper);
         gossiperThread.start();
-
     }
 
-    private void connectToNeighborsFromConf(String confFilePath){
+    private void connectToNeighborsFromConf(String confFilePath) {
         try {
             File myObj = new File(confFilePath);
             Scanner myReader = new Scanner(myObj);
@@ -74,12 +70,13 @@ public abstract class Server extends NioChannels.Server
         }
     }
 
-
-    public Socket connectWithoutAddingNeighbor(String host, int port){
+    public Socket connectWithoutAddingNeighbor(String host, int port) {
+        System.out.println("Hello5");
         return connectWithoutAddingNeighbor(new InetSocketAddress(host, port));
     }
 
     public Socket connectWithoutAddingNeighbor(InetSocketAddress inetSocketAddress) {
+        System.out.println("Hello6");
         return super.connect(inetSocketAddress);
     }
 
@@ -87,9 +84,10 @@ public abstract class Server extends NioChannels.Server
         return connect(new InetSocketAddress(host, port));
     }
 
-
     public Socket connect(InetSocketAddress inetSocketAddress) {
+        System.out.println("Hello1");
         Socket socket = super.connect(inetSocketAddress);
+        System.out.println("Hello2");
         if (socket != null)
             gossiper.addNeighbor(socket);
         return socket;
@@ -107,13 +105,21 @@ public abstract class Server extends NioChannels.Server
         return false;
     }
 
-    public void addLBNode(Socket socket,String socketID){
+    public void addLBNode(Socket socket, String socketID) {
         gossiper.addNeighbor(socket);
         gossiper.addNeighborID(socketID);
     }
 
-    public boolean knowsAboutLBNode(String socketID){
+    public boolean knowsAboutLBNode(String socketID) {
         return gossiper.getNeighborIDs().contains(socketID);
     }
 
+    public void addAdminNode(Socket socket, String socketID) {
+        gossiper.addNeighbor(socket);
+        gossiper.addNeighborID(socketID);
+    }
+
+    public boolean knowsAboutAdminNode(String socketID) {
+        return gossiper.getNeighborIDs().contains(socketID);
+    }
 }
