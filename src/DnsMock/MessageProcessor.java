@@ -16,7 +16,7 @@ public class MessageProcessor extends NioChannels.Message.MessageProcessor{
         String newLBHost = address.getHostString();
 
         int newLBPort = Integer.parseInt(messageContent.split(" ")[1]);
-        ((Server)server).addLoadBalancer(new InetSocketAddress(newLBHost,newLBPort));
+        ((Server)server).addLoadBalancer(this.message.getSocket(), new InetSocketAddress(newLBHost,newLBPort));
     }
 
     @Override
