@@ -53,3 +53,5 @@ tasks.register('DnsMock', JavaExec) {
     main = 'DnsMock.Main'
     classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath
 }
+sourceCompatibility = JavaVersion.VERSION_16
+targetCompatibility = JavaVersion.VERSION_16

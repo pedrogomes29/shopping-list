@@ -15,16 +15,7 @@ public class MessageProcessor extends NioChannels.Message.MessageProcessor{
         InetSocketAddress address = (InetSocketAddress) this.message.getSocket().socketChannel.getRemoteAddress();
         String newLBHost = address.getHostString();
         int newLBPort = Integer.parseInt(messageContent.split(" ")[1]);
-
-        ((Server)server).addLoadBalancer(new InetSocketAddress(newLBHost, newLBPort));
-    }
-
-    private void dealWithNewAdmin(String messageContent) throws IOException {
-        InetSocketAddress address = (InetSocketAddress) this.message.getSocket().socketChannel.getRemoteAddress();
-        String newAdminHost = address.getHostString();
-        int newAdminPort = Integer.parseInt(messageContent.split(" ")[1]);
-
-        ((Server)server).addAdmin(new InetSocketAddress(newAdminHost, newAdminPort));
+        ((Server)server).addLoadBalancer(this.message.getSocket(), new InetSocketAddress(newLBHost,newLBPort));
     }
 
     @Override
@@ -42,13 +33,6 @@ public class MessageProcessor extends NioChannels.Message.MessageProcessor{
             Queue<Message> writeQueue = server.getWriteQueue();
             synchronized (writeQueue) {
                 writeQueue.add(new Message(lbAddress.getHostString()+":"+lbAddress.getPort(),message.getSocket()));
-            }
-        }
-        else if (messageContent.startsWith("ADD_ADMIN ")) {
-            try {
-                dealWithNewAdmin(messageContent);
-            } catch (IOException e) {
-                throw  new RuntimeException(e);
             }
         }
     }

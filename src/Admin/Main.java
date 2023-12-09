@@ -6,19 +6,27 @@ import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
 import java.util.Scanner;
+import java.util.UUID;
 
 public class Main {
 
     public static void main(String[] args) throws IOException, NoSuchAlgorithmException {
+
         boolean debug = false;
+        if (args.length < 3)
+            debug = true;
+
         int port = 7070;
         String confFile = "conf.txt";
+        String id = UUID.randomUUID().toString();
+
         if (!debug) {
-            port =  Integer.parseInt(args[0]);
-            confFile =  args[1];
+            id = args[0];
+            port =  Integer.parseInt(args[1]);
+            confFile =  args[2];
         }
 
-        Server server = new Server("conf/" + confFile, port, 0, 3);
+        Server server = new Server(id,"conf/" + confFile, port, 0, 3);
         server.startThreads();
 
         Scanner scanner = new Scanner(System.in);

@@ -8,7 +8,6 @@ public class Main {
     public static void main(String[] args) throws IOException {
 
         boolean debug = false;
-
         if (args.length < 3)
             debug = true;
 
@@ -16,21 +15,17 @@ public class Main {
         int port = 8080;
         String id = UUID.randomUUID().toString();
 
-
-        if (!debug){
+        if (!debug) {
             id = args[0];
             port = Integer.parseInt(args[1]);
             conf = args[2];
         }
 
-
         Server server = new Server(id,"conf/" + conf, port, 3, 3);
-
         server.startThreads();
 
         Scanner scanner = new Scanner(System.in);
         String input;
-
         do {
             System.out.println("Server is running");
             System.out.println("Type 'close' to exit");
