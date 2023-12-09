@@ -16,7 +16,7 @@ public class Main {
             confFile =  args[1];
         }
 
-        Server server = new Server("conf/" + confFile, port, 0, 0);
+        Server server = new Server("conf/" + confFile, port, 0, 3);
         server.startThreads();
 
         Scanner scanner = new Scanner(System.in);
