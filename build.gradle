@@ -39,7 +39,7 @@ tasks.register('Node', JavaExec) {
 }
 
 tasks.register('Client', JavaExec) {
-    main = 'Client.Main'
+    main = 'Client.Client'
     classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath
     standardInput = System.in
 }

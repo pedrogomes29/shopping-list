@@ -50,6 +50,14 @@ public class CCounter implements Serializable {
         this.replicaID = replicaID;
     }
 
+    public Map<String, Integer> getObservedIDs(){
+        return observedIDs;
+    }
+
+    public Map<String, Integer> getObservedCounters(){
+        return observedCounters;
+    }
+
     public void setObservedIDs(Map<String, Integer> observedIDs) {
         this.observedIDs = observedIDs;
     }

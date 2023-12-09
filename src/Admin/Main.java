@@ -27,7 +27,7 @@ public class Main {
             System.out.println("Specify node to remove");
             System.out.println("Type 'close' to exit");
             input = scanner.nextLine();
-            // TODO: Handle remove
+
             if (!input.equals("close")) {
                 for (TokenNode tokenNode: server.consistentHashing.getHashToNode().values()) {
                     if (input.equals(tokenNode.getId())) {

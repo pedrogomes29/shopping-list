@@ -1,5 +1,6 @@
 package Node;
 
+import NioChannels.Message.Message;
 import Node.ConsistentHashing.ConsistentHashing;
 import Node.ConsistentHashing.TokenNode;
 import Node.Gossiper.Gossiper;
@@ -16,7 +17,7 @@ import java.util.*;
 
 public abstract class Server extends NioChannels.Server  {
     protected String nodeId;
-    public final ConsistentHashing consistentHashing;
+    public ConsistentHashing consistentHashing;
     public final Gossiper gossiper;
     private Thread gossiperThread;
 
@@ -26,7 +27,7 @@ public abstract class Server extends NioChannels.Server  {
         super(port, messageProcessorBuilder);
 
         this.nodeId = UUID.randomUUID().toString();
-        this.consistentHashing = new ConsistentHashing(nrReplicas,nrVirtualNodesPerNode);
+        System.out.println("id: " + nodeId);
         this.nrVirtualNodesPerNode = nrVirtualNodesPerNode;
         gossiper = new Gossiper(this, this.outboundMessageQueue);
 
@@ -61,8 +62,20 @@ public abstract class Server extends NioChannels.Server  {
                 int port = Integer.parseInt(lineParts[1]);
 
                 InetSocketAddress currentNeighborAddress = new InetSocketAddress(host,port);
-                connect(currentNeighborAddress);
+                Socket currentNeighborSocket = connect(currentNeighborAddress);
+                Queue<Message> writeQueue = getWriteQueue();
+                synchronized (writeQueue) {
+                    String messageToStartRumour = "RUMOUR ";
+                    if (this instanceof LoadBalancer.Server)
+                        messageToStartRumour += "ADD_LB ";
+                    else if (this instanceof RingNode.Server)
+                        messageToStartRumour += "ADD_NODE ";
+                    else if (this instanceof Admin.Server)
+                        messageToStartRumour += "ADD_ADMIN ";
+                    messageToStartRumour +=  this.nodeId + " " + this.port;
 
+                    writeQueue.add(new Message(messageToStartRumour,currentNeighborSocket));
+                }
             }
             myReader.close();
         } catch (FileNotFoundException e) {
@@ -70,60 +83,27 @@ public abstract class Server extends NioChannels.Server  {
         }
     }
 
-    public Socket connectWithoutAddingNeighbor(String host, int port) {
-        System.out.println("Hello5");
-        return connectWithoutAddingNeighbor(new InetSocketAddress(host, port));
-    }
-
-    public Socket connectWithoutAddingNeighbor(InetSocketAddress inetSocketAddress) {
-        System.out.println("Hello6");
-        return super.connect(inetSocketAddress);
-    }
-
-    public Socket connect(String host, int port){
-        return connect(new InetSocketAddress(host, port));
-    }
-
-    public Socket connect(InetSocketAddress inetSocketAddress) {
-        System.out.println("Hello1");
-        Socket socket = super.connect(inetSocketAddress);
-        System.out.println("Hello2");
-        if (socket != null)
-            gossiper.addNeighbor(socket);
-        return socket;
-    }
-
     public String getNodeId() {
         return  nodeId;
     }
 
     public boolean knowsAboutRingNode(String nodeID) throws NoSuchAlgorithmException {
-        for(String virtualNodeIDHash:TokenNode.getVirtualNodesHashes(nodeID,nrVirtualNodesPerNode)){
-            if(consistentHashing.getHashToNode().containsKey(virtualNodeIDHash))
+        for (String virtualNodeIDHash:TokenNode.getVirtualNodesHashes(nodeID,nrVirtualNodesPerNode)) {
+            if (consistentHashing.getHashToNode().containsKey(virtualNodeIDHash))
                 return true;
         }
         return false;
     }
 
-    public void addLBNode(Socket socket, String socketID) {
-        gossiper.addNeighbor(socket);
-        gossiper.addNeighborID(socketID);
+    public boolean knowsAboutLBNode(String nodeID) {
+        return gossiper.getNeighbors().containsKey(nodeID) || nodeID.equals(nodeId);
     }
 
-    public boolean knowsAboutLBNode(String socketID) {
-        return gossiper.getNeighborIDs().contains(socketID);
-    }
-
-    public void addAdminNode(Socket socket, String socketID) {
-        gossiper.addNeighbor(socket);
-        gossiper.addNeighborID(socketID);
-    }
-
-    public boolean knowsAboutAdminNode(String socketID) {
-        return gossiper.getNeighborIDs().contains(socketID);
+    public boolean knowsAboutAdminNode(String nodeID) {
+        return gossiper.getNeighbors().containsKey(nodeID) || nodeID.equals(nodeId);
     }
 
     public boolean alreadyRemovedNode(String nodeID) {
-        return !consistentHashing.containsNode(nodeID);
+        return !gossiper.getNeighbors().containsKey(nodeID);
     }
 }

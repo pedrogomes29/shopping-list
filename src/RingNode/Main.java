@@ -6,7 +6,7 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
         boolean debug = false;
-        int port = 101;
+        int port = 102;
         String confFile = "conf1.txt";
         if (!debug){
             port =  Integer.parseInt(args[0]);
@@ -17,4 +17,7 @@ public class Main {
         Server server = new Server("conf/" + confFile, port, 3, 3);
         server.startThreads();
     }
+
+
+
 }
