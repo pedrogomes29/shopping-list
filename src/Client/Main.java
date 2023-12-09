@@ -81,6 +81,9 @@ public class Main {
                 System.out.println("4 - Pull updates from cloud");
                 System.out.println("5 - Push updates to cloud");
             }
+            else {
+                System.out.println("4 - Pull updates from cloud");
+            }
             System.out.println("0 - Exit");
 
             option = scan.nextInt(); scan.nextLine();
@@ -106,8 +109,9 @@ public class Main {
                     ShoppingListCRDT shoppingList2 = this.client.getList(listLink);
                     if (shoppingList2 != null){
                         shoppingListCRDT.merge(shoppingList2);
+                        System.out.println("Your remote shopping list has been successfully pulled");
                     } else {
-                        System.out.println("List " + listLink + " doesn't exist on the cloud");
+                        System.out.println("Shopping list " + listLink + " doesn't exist on the cloud");
                         option = -1;
                     }
                 }

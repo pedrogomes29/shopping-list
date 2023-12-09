@@ -34,8 +34,6 @@ public class ShoppingListCRDT implements Serializable {
         for (CCounter cCounter: this.shoppingList.values()) {
             cCounter.setReplicaID(this.replicaID);
             cCounter.setVersion(0);
-            cCounter.setObservedIDs(new HashMap<>());
-            cCounter.setObservedCounters(new HashMap<>());
         }
     }
 
@@ -84,7 +82,10 @@ public class ShoppingListCRDT implements Serializable {
                 }
                 mergedShoppingList.put(item.getItem(), this.shoppingList.get(item.getItem()));
             } else {
-                mergedShoppingList.put(item.getItem(), shoppingListCRDT.getShoppingList().get(item.getItem()));
+                CCounter newItem = shoppingListCRDT.getShoppingList().get(item.getItem());
+                newItem.setReplicaID(this.replicaID);
+                newItem.setVersion(0);
+                mergedShoppingList.put(item.getItem(), newItem);
             }
         }
 

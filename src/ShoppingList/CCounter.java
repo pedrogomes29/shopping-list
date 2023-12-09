@@ -105,6 +105,6 @@ public class CCounter implements Serializable {
             mergedItemQuantity += counter.getValue();
         }
         this.version++;
-        this.itemQuantity = mergedItemQuantity;
+        this.itemQuantity = mergedItemQuantity >= 0 ? mergedItemQuantity : 0;
     }
 }
