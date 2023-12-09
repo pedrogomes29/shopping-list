@@ -122,4 +122,8 @@ public abstract class Server extends NioChannels.Server  {
     public boolean knowsAboutAdminNode(String socketID) {
         return gossiper.getNeighborIDs().contains(socketID);
     }
+
+    public boolean alreadyRemovedNode(String nodeID) {
+        return !consistentHashing.containsNode(nodeID);
+    }
 }

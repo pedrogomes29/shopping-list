@@ -124,6 +124,14 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         getServer().addAdminNode(message.getSocket(), newNodeID);
     }
 
+    public String receiveRemoveMessage(String removeNodeMessage) {
+        String nodeID = removeNodeMessage.split(" ")[1];
+        // TODO: REMOVE
+        // if (!getServer().alreadyRemovedNode(nodeID)) {
+        // }
+        return "REMOVE " + nodeID;
+    }
+
     public void receiveRumour(String rumour) {
         Socket rumourSender = message.getSocket();
         Queue<Message> messageQueue = this.server.getWriteQueue();
@@ -132,6 +140,7 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         boolean addRingNodeRumour = rumour.startsWith("ADD_NODE ");
         boolean addLBNodeRumour = rumour.startsWith("ADD_LB ");
         boolean addAdminNodeRumour = rumour.startsWith("ADD_ADMIN ");
+        boolean removeNodeRumour = rumour.startsWith("REMOVE ");
 
         if (addRingNodeRumour || addLBNodeRumour || addAdminNodeRumour) {
             try {
@@ -140,14 +149,17 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
                     alreadyReceivedRumour = getServer().knowsAboutRingNode(nodeID);
                 else if (addLBNodeRumour)
                     alreadyReceivedRumour = getServer().knowsAboutLBNode(nodeID);
-                else {
+                else
                     alreadyReceivedRumour = getServer().knowsAboutAdminNode(nodeID);
-                }
 
                 newrumour = receiveNewNodeWithEndpoint(rumour);
             } catch (IOException | NoSuchAlgorithmException e) {
                 throw new RuntimeException(e);
             }
+        } else if (removeNodeRumour) {
+            String nodeID = rumour.split(" ")[1];
+            alreadyReceivedRumour = getServer().alreadyRemovedNode(nodeID);
+            newrumour = receiveRemoveMessage(rumour);
         }
 
         String rumourACK;

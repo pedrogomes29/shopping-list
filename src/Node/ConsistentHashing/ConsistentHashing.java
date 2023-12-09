@@ -2,11 +2,11 @@ package Node.ConsistentHashing;
 
 import NioChannels.Message.Message;
 import NioChannels.Socket.Socket;
-import Utils.Hasher;
 
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class ConsistentHashing {
@@ -21,6 +21,14 @@ public class ConsistentHashing {
         this.nrVirtualNodesPerNode = nrVirtualNodesPerNode;
         this.nodeHashes = new ArrayList<>();
         this.hashToNode = new HashMap<>();
+    }
+
+    public  boolean containsNode(String nodeID) {
+        for (TokenNode tokenNode: this.hashToNode.values()) {
+            if (Objects.equals(tokenNode.getId(), nodeID))
+                return true;
+        }
+        return false;
     }
 
     public int binarySearch(String hash) {
