@@ -82,10 +82,10 @@ public class ShoppingListCRDT implements Serializable {
                 }
                 mergedShoppingList.put(item.getItem(), this.shoppingList.get(item.getItem()));
             } else {
-                CCounter newItem = shoppingListCRDT.getShoppingList().get(item.getItem());
-                newItem.setReplicaID(this.replicaID);
-                newItem.setVersion(0);
-                mergedShoppingList.put(item.getItem(), newItem);
+                CCounter itemCCounter = shoppingListCRDT.getShoppingList().get(item.getItem());
+                itemCCounter.setReplicaID(this.replicaID);
+                itemCCounter.setVersion(0);
+                mergedShoppingList.put(item.getItem(), itemCCounter);
             }
         }
 
