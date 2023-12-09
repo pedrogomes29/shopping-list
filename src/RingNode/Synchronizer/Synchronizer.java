@@ -5,7 +5,6 @@ import Node.ConsistentHashing.TokenNode;
 import RingNode.Server;
 import NioChannels.Socket.Socket;
 
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 public class Synchronizer implements Runnable{
@@ -82,11 +81,8 @@ public class Synchronizer implements Runnable{
 
                 if (nrRealNodes >= nrReplicas) {
                     String[] virtualNodeHashes;
-                    try {
-                        virtualNodeHashes = TokenNode.getVirtualNodesHashes(server.getNodeId(), nrVirtualNodesPerNode);
-                    } catch (NoSuchAlgorithmException e) {
-                        throw new RuntimeException(e);
-                    }
+
+                    virtualNodeHashes = TokenNode.getVirtualNodesHashes(server.getNodeId(), nrVirtualNodesPerNode);
 
 
                     for (String virtualNodeHash : virtualNodeHashes) {

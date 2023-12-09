@@ -1,6 +1,7 @@
 package Node.Gossiper;
 
 import NioChannels.Message.Message;
+import NioChannels.Socket.Socket;
 import Node.ConsistentHashing.ConsistentHashing;
 import Node.ConsistentHashing.TokenNode;
 import Node.Server;
@@ -94,6 +95,13 @@ public class Gossiper implements Runnable{
                 for (int i = 0; i < nrNeighborsToGossipTo && !neighborIDs.isEmpty(); i++) {
                     int neighborToGossipToIdx = ThreadLocalRandom.current().nextInt(0, neighborIDs.size());
                     String neighborToGossipToID = neighborIDs.get(neighborToGossipToIdx);
+
+                    Socket socket = neighbors.get(neighborToGossipToID).getSocket();
+                    if( !socket.socketChannel.isConnected()){
+                        i--;
+                        continue;
+                    }
+
                     for (String rumour : rumours.keySet()) {
                         synchronized (writeQueue) {
                             writeQueue.add(new Message("RUMOUR" + " " + rumour, neighbors.get(neighborToGossipToID).getSocket()));
@@ -132,6 +140,22 @@ public class Gossiper implements Runnable{
             neighbors.put(neighbor.getId(),neighbor);
         }
     }
+
+    public void removeNeighbor(Socket socket) {
+        synchronized (neighbors) {
+            Iterator<Map.Entry<String, Node>> iterator = neighbors.entrySet().iterator();
+
+            while (iterator.hasNext()) {
+                Map.Entry<String, Node> entry = iterator.next();
+                Node node = entry.getValue();
+
+                if (node.getSocket().equals(socket)) {
+                    iterator.remove();
+                }
+            }
+        }
+    }
+
 
     public void addRumour(String newRumour){
         rumours.put(newRumour,rumour_count);

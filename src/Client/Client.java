@@ -138,7 +138,7 @@ public class Client {
         // usado apenas para testar o client
         Client client = new Client();
 
-        for(int i=0;i<10;i++) {
+        for(int i=10;i<15;i++) {
             ShoppingListCRDT list1CRDT = new ShoppingListCRDT();
             list1CRDT.add("bicicleta", 1);
             list1CRDT.add("pedro", 6);

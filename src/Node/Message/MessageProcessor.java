@@ -8,7 +8,6 @@ import NioChannels.Socket.Socket;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 import Node.Node;
@@ -48,7 +47,7 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
     }
 
 
-    public void addNode(String nodeID, String nodeHost, int nodePort, Socket socketToNode) throws NoSuchAlgorithmException {
+    public void addNode(String nodeID, String nodeHost, int nodePort, Socket socketToNode)  {
         InetSocketAddress newNodeEndpointSocketAddress = new InetSocketAddress(nodeHost, nodePort);
         TokenNode tokenNode = new TokenNode(socketToNode,nodeID,newNodeEndpointSocketAddress);
         if (getServer().consistentHashing.addNodeToRing(tokenNode))
@@ -85,24 +84,18 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
             firstOneConnected = true;
         }
 
-        try {
-            if(Objects.equals(method, "ADD_NODE")){
-                if (!getServer().knowsAboutRingNode(newNodeID)){
-                    Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
-                    addNode(newNodeID,newNodeHost,newNodePort,socketToNewNode);
-                }
-
-            }
-            else if(Objects.equals(method, "ADD_LB")){
-                if (!getServer().knowsAboutLBNode(newNodeID)){
-                    Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
-                    addLB(newNodeID,newNodeHost,newNodePort,socketToNewNode);
-                }
+        if(Objects.equals(method, "ADD_NODE")){
+            if (!getServer().knowsAboutRingNode(newNodeID)){
+                Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
+                addNode(newNodeID,newNodeHost,newNodePort,socketToNewNode);
             }
 
-
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+        }
+        else if(Objects.equals(method, "ADD_LB")){
+            if (!getServer().knowsAboutLBNode(newNodeID)){
+                Socket socketToNewNode = getNewNodeSocket(newNodeHost,newNodePort,firstOneConnected);
+                addLB(newNodeID,newNodeHost,newNodePort,socketToNewNode);
+            }
         }
 
         return method + " " + newNodeID + " " + newNodeHost + ":" + newNodePort;
@@ -123,7 +116,7 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
             if (getServer().consistentHashing.addNodeToRing(tokenNode))
                 getServer().gossiper.addNeighbor(tokenNode);
 
-        } catch (NoSuchAlgorithmException | IOException e) {
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -168,7 +161,7 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
                 newrumour = receiveNewNodeWithEndpoint(rumour);
 
 
-            } catch (IOException | NoSuchAlgorithmException e) {
+            } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -227,11 +220,7 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
                 int nodePort = Integer.parseInt(nodeEndpointParts[1]);
                 Socket socketToNode = getServer().connect(nodeHost,nodePort);
                 if(Objects.equals(nodeType, "NODE")){
-                    try {
-                        addNode(nodeID,nodeHost,nodePort,socketToNode);
-                    } catch (NoSuchAlgorithmException e) {
-                        throw new RuntimeException(e);
-                    }
+                    addNode(nodeID,nodeHost,nodePort,socketToNode);
                 }
                 else if (Objects.equals(nodeType, "LB")){
                     addLB(nodeID,nodeHost,nodePort,socketToNode);
@@ -253,7 +242,7 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
             }
 
             messageToAddNode += " " + nodeNotReceived.getId() + " " +
-                    nodeNotReceived.getNodeEndpoint().getHostName() + ":" + nodeNotReceived.getNodeEndpoint().getPort();
+                    nodeNotReceived.getNodeEndpoint().getHostString() + ":" + nodeNotReceived.getNodeEndpoint().getPort();
 
             synchronized (writeQueue){
                 writeQueue.add(new Message(messageToAddNode,message.getSocket()));
@@ -270,11 +259,7 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         String newNodeHost = newNodeEndpointParts[0];
         int newNodePort = Integer.parseInt(newNodeEndpointParts[1]);
         Socket newNodeSocket = getServer().connect(newNodeHost,newNodePort);
-        try {
-            addNode(newNodeID,newNodeHost,newNodePort,newNodeSocket);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
+        addNode(newNodeID,newNodeHost,newNodePort,newNodeSocket);
     }
 
     public void requestAddLB(String messageContent){
