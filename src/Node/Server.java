@@ -104,6 +104,10 @@ public abstract class Server extends NioChannels.Server  {
     }
 
     public boolean alreadyRemovedNode(String nodeID) {
-        return !gossiper.getNeighbors().containsKey(nodeID);
+        for (TokenNode tokenNode: consistentHashing.getHashToNode().values()) {
+            if (Objects.equals(tokenNode.getId(), nodeID))
+                return false;
+        }
+        return true;
     }
 }

@@ -3,11 +3,13 @@ package Admin;
 import Node.ConsistentHashing.TokenNode;
 
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
+import java.util.Objects;
 import java.util.Scanner;
 
 public class Main {
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, NoSuchAlgorithmException {
         boolean debug = false;
         int port = 7070;
         String confFile = "conf.txt";
@@ -32,8 +34,8 @@ public class Main {
                 for (TokenNode tokenNode: server.consistentHashing.getHashToNode().values()) {
                     if (input.equals(tokenNode.getId())) {
                         server.gossiper.addRumour("REMOVE " + input);
+                        server.consistentHashing.removeNodeFromRing(tokenNode);
                         foundNode = true;
-                        break;
                     }
                 }
                 if (!foundNode) {

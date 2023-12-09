@@ -13,9 +13,5 @@ public class Server extends Node.Server {
         this.consistentHashing = new ConsistentHashing(nrReplicas, nrVirtualNodesPerNode);
 
         gossiper.addRumour("ADD_ADMIN " + nodeId + " " + port);
-        Socket socketToDnsMockup = connect("127.0.0.1",9090);
-        synchronized (outboundMessageQueue){
-            outboundMessageQueue.add(new Message("ADD_ADMIN " +  port, socketToDnsMockup));
-        }
     }
 }

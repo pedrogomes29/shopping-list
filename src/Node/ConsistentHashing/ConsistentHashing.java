@@ -151,4 +151,12 @@ public class ConsistentHashing {
     public synchronized int getNrRealNodes(){
         return getNrNodes()/nrVirtualNodesPerNode;
     }
+
+    public synchronized Set<String> getNodes() {
+        Set<String> nodes = new HashSet<>();
+        for (TokenNode tokenNode: hashToNode.values()) {
+            nodes.add(tokenNode.getId());
+        }
+        return nodes;
+    }
 }

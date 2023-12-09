@@ -370,6 +370,12 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
                 e.printStackTrace();
             }
         }
+
+        Set<String> nodes = getServer().consistentHashing.getNodes();
+        System.out.println("Active nodes: ");
+        for (String node: nodes) {
+            System.out.println(node);
+        }
     }
 
     /**
