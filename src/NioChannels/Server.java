@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 
-public class Server
+public class Server implements AutoCloseable
 {
     public final int port;
     public boolean running = true;
@@ -54,11 +54,16 @@ public class Server
     {
         running = false;
         accepterThread.interrupt();
+        processorThread.interrupt();
         accepterThread.join();
         processorThread.join();
 
     }
 
+    /**
+     * Starts the threads responsible for accepting incoming socket connections and processing them.
+     * This method creates and starts two threads: one for socket acceptance and another for socket processing.
+     */
     public void startThreads()
     {
         accepterThread = new Thread(socketAccepter);
@@ -68,26 +73,37 @@ public class Server
         processorThread.start();
     }
 
-
-
+    /**
+     * Connects to a remote host using the specified host name and port number.
+     *
+     * @param host The host name or IP address of the remote server.
+     * @param port The port number on the remote server.
+     * @return A {@code Socket} object representing the established connection.
+     */
     public Socket connect(String host, int port){
         return connect(new InetSocketAddress(host, port));
     }
-
+    /**
+     * Connects to a remote host using the provided {@code InetSocketAddress}.
+     *
+     * @param inetSocketAddress The {@code InetSocketAddress} containing the target host and port information.
+     * @return A {@code Socket} object representing the established connection.
+     */
     public Socket connect(InetSocketAddress inetSocketAddress) {
         try {
-            System.out.println("Connect :" + inetSocketAddress.toString());
             SocketChannel socketChannel = SocketChannel.open();
             socketChannel.configureBlocking(false);
             socketChannel.connect(inetSocketAddress);
 
             Socket socket = new Socket(socketChannel);
 
+            System.out.println("Connect :" + inetSocketAddress.toString());
             connectionQueue.offer(socket);
             return socket;
 
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.err.println("Error: Cannot connect to " + inetSocketAddress);
+            return null;
         }
     }
 
@@ -99,4 +115,17 @@ public class Server
         return outboundMessageQueue;
     }
 
+    /**
+     * Closes the resource.
+     * @throws Exception if an error occurs during the closing process.
+     */
+    @Override
+    public void close() throws Exception {
+        stopServer();
+    }
+
+    public void removeSocket(Socket socket) {
+        this.socketMap.remove(socket.getSocketId());
+
+    }
 }

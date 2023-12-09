@@ -3,17 +3,17 @@ package Node.ConsistentHashing;
 import NioChannels.Socket.Socket;
 import Utils.Hasher;
 
-import java.security.NoSuchAlgorithmException;
+import java.net.InetSocketAddress;
 
-public class TokenNode {
-    String id;
-    Socket socket;
-    public TokenNode(Socket nodesocket, String nodeId){
-        this.id = nodeId;
-        this.socket = nodesocket;
+public class TokenNode extends Node.Node{
+    private boolean active;
+
+    public TokenNode(Socket nodesocket, String nodeId, InetSocketAddress nodeEndpoint){
+        super(nodesocket,nodeId,nodeEndpoint);
+        active = true;
     }
 
-    public static String[] getVirtualNodesHashes(String nodeId, int nrVirtualNodesPerNode) throws NoSuchAlgorithmException {
+    public static String[] getVirtualNodesHashes(String nodeId, int nrVirtualNodesPerNode)  {
         String[] hashes = new String[nrVirtualNodesPerNode];
         for(int i=0; i < nrVirtualNodesPerNode; i++){
             String virtualNodeId = nodeId + "-" + i;
@@ -22,11 +22,13 @@ public class TokenNode {
         }
         return hashes;
     }
-    public String getId(){
-        return this.id;
+
+    public void setActive(boolean active) {
+        this.active = active;
     }
 
-    public Socket getSocket(){
-        return this.socket;
+    public boolean isActive(){
+        return active;
     }
+
 }

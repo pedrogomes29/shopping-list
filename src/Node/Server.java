@@ -1,18 +1,17 @@
 package Node;
 
 
+import NioChannels.Message.Message;
 import Node.ConsistentHashing.ConsistentHashing;
 import Node.ConsistentHashing.TokenNode;
 import Node.Gossiper.Gossiper;
 import NioChannels.Message.MessageProcessorBuilder;
 import NioChannels.Socket.Socket;
-import Utils.Hasher;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.security.NoSuchAlgorithmException;
 
 import java.util.*;
 
@@ -20,17 +19,17 @@ import java.util.*;
 public abstract class Server extends NioChannels.Server
 {
     protected String nodeId;
-    public final ConsistentHashing consistentHashing;
+    public ConsistentHashing consistentHashing;
     public final Gossiper gossiper;
     private Thread gossiperThread;
 
     private final int nrVirtualNodesPerNode;
 
-    public Server(String confFilePath, int port,int nrReplicas,int nrVirtualNodesPerNode, MessageProcessorBuilder messageProcessorBuilder ) throws IOException {
+    public Server(String nodeId, String confFilePath, int port,int nrReplicas,int nrVirtualNodesPerNode, MessageProcessorBuilder messageProcessorBuilder ) throws IOException {
         super(port, messageProcessorBuilder);
 
-        this.nodeId = UUID.randomUUID().toString();
-        this.consistentHashing = new ConsistentHashing(nrReplicas,nrVirtualNodesPerNode);
+        this.nodeId = nodeId;
+        System.out.println("id: "+ nodeId);
         this.nrVirtualNodesPerNode = nrVirtualNodesPerNode;
         gossiper = new Gossiper(this, this.outboundMessageQueue);
 
@@ -59,61 +58,59 @@ public abstract class Server extends NioChannels.Server
             Scanner myReader = new Scanner(myObj);
             while (myReader.hasNextLine()) {
                 String line = myReader.nextLine();
+
+                if (line.isBlank())
+                    continue;
+
                 String[] lineParts = line.split(":");
 
                 String host = lineParts[0];
                 int port = Integer.parseInt(lineParts[1]);
 
                 InetSocketAddress currentNeighborAddress = new InetSocketAddress(host,port);
-                connect(currentNeighborAddress);
+                Socket currentNeighborSocket = connect(currentNeighborAddress);
+                Queue<Message> writeQueue = getWriteQueue();
+                synchronized (writeQueue){
+                    String messageToStartRumour = "RUMOUR" + " ";
+                    if (this instanceof LoadBalancer.Server)
+                        messageToStartRumour += "ADD_LB" + " ";
+                    else if(this instanceof RingNode.Server)
+                        messageToStartRumour += "ADD_NODE" + " ";
 
+                    messageToStartRumour +=  this.nodeId + " " + this.port;
+
+                    writeQueue.add(new Message(messageToStartRumour,currentNeighborSocket));
+                }
             }
             myReader.close();
         } catch (FileNotFoundException e) {
-
+            System.err.println("Warning: Error reading conf file!");
         }
     }
 
-
-    public Socket connectWithoutAddingNeighbor(String host, int port){
-        return connectWithoutAddingNeighbor(new InetSocketAddress(host, port));
-    }
-
-    public Socket connectWithoutAddingNeighbor(InetSocketAddress inetSocketAddress) {
-        return super.connect(inetSocketAddress);
-    }
-
-    public Socket connect(String host, int port){
-        return connect(new InetSocketAddress(host, port));
-    }
-
-
-    public Socket connect(InetSocketAddress inetSocketAddress) {
-        Socket socket = super.connect(inetSocketAddress);
-        if (socket != null)
-            gossiper.addNeighbor(socket);
-        return socket;
-    }
 
     public String getNodeId() {
         return  nodeId;
     }
 
-    public boolean knowsAboutRingNode(String nodeID) throws NoSuchAlgorithmException {
+    public boolean knowsAboutRingNode(String nodeID)  {
         for(String virtualNodeIDHash:TokenNode.getVirtualNodesHashes(nodeID,nrVirtualNodesPerNode)){
-            if(consistentHashing.getHashToNode().containsKey(virtualNodeIDHash))
+            TokenNode node = consistentHashing.getHashToNode().get(virtualNodeIDHash);
+            if(node != null && node.isActive())
                 return true;
         }
         return false;
     }
 
-    public void addLBNode(Socket socket,String socketID){
-        gossiper.addNeighbor(socket);
-        gossiper.addNeighborID(socketID);
+    public boolean knowsAboutLBNode(String nodeID){
+        return gossiper.getNeighbors().containsKey(nodeID) || nodeID.equals(nodeId);
     }
 
-    public boolean knowsAboutLBNode(String socketID){
-        return gossiper.getNeighborIDs().contains(socketID);
-    }
+    @Override
+    public void removeSocket(Socket socket) {
+        super.removeSocket(socket);
+        gossiper.removeNeighbor(socket);
 
+        consistentHashing.markTemporaryNode(socket);
+    }
 }

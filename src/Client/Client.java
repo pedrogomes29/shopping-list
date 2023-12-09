@@ -1,11 +1,13 @@
 package Client;
 
 import ShoppingList.ShoppingListCRDT;
+import Utils.Hasher;
 import Utils.Serializer;
 
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.security.NoSuchAlgorithmException;
 
 public class Client {
     private Socket socketToLB;
@@ -131,30 +133,58 @@ public class Client {
 
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
 
         // usado apenas para testar o client
         Client client = new Client();
 
-        ShoppingListCRDT listCRDT = new ShoppingListCRDT();
-        listCRDT.add("bicicleta", 1);
-        listCRDT.add("predro", 2);
+        for(int i=10;i<15;i++) {
+            ShoppingListCRDT list1CRDT = new ShoppingListCRDT();
+            list1CRDT.add("bicicleta", 1);
+            list1CRDT.add("pedro", 6);
 
-        boolean sent = client.pushList(listCRDT, "listadopedro");
+            client.pushList(list1CRDT, "listadopedro-"+i);
 
-        System.out.println("Sent" + sent);
-
-        String listaName = "listadorui";
-        ShoppingListCRDT response = client.getList(listaName);
-
-        if (response == null){
-            System.out.println("List " + listaName + " doesnt exist");
-            return;
         }
 
-        for(String key : response.getShoppingList().keySet()){
-            System.out.println(key + " " + response.getShoppingList().get(key).getItemQuantity());
+        Thread.sleep(5*1000);
+
+        ShoppingListCRDT response1 = client.getList("listadopedro-0");
+
+        System.out.println("listadopedro");
+        for(String key : response1.getShoppingList().keySet()){
+            System.out.println(key + " " + response1.getShoppingList().get(key).getItemQuantity());
         }
+
     }
 
+    /*
+    public static void main(String[] args) throws NoSuchAlgorithmException {
+
+        // usado apenas para testar o client
+        Client client = new Client();
+
+        ShoppingListCRDT list1CRDT = new ShoppingListCRDT();
+        list1CRDT.add("bicicleta", 1);
+        list1CRDT.add("predro", 3);
+        ShoppingListCRDT list1CRDTCopy = (ShoppingListCRDT) Serializer.deserializeBase64(Serializer.serializeBase64(list1CRDT));
+
+        ShoppingListCRDT list2CRDT = new ShoppingListCRDT();
+        list2CRDT.add("bicicleta", 1);
+        list2CRDT.add("predro", 6);
+        ShoppingListCRDT list2CRDTCopy = (ShoppingListCRDT) Serializer.deserializeBase64(Serializer.serializeBase64(list2CRDT));
+
+        list1CRDT.merge(list2CRDTCopy);
+        list2CRDT.merge(list1CRDTCopy);
+
+        for(String key : list1CRDT.getShoppingList().keySet()){
+            System.out.println(key + " " + list1CRDT.getShoppingList().get(key).getItemQuantity());
+        }
+
+        System.out.println(list1CRDT.equals(list2CRDT));
+        System.out.println(Hasher.encodeAndMd5(list1CRDT));
+        System.out.println(Hasher.encodeAndMd5(list2CRDT));
+
+    }
+    */
 }
