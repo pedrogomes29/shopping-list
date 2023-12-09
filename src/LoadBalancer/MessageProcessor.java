@@ -18,9 +18,9 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
     @Override
     protected Socket isToRedirectMessage(Message message) {
         String messageContent = new String(message.bytes);
-        if(messageContent.startsWith("PUT ") || messageContent.startsWith("GET "))
+        if(messageContent.startsWith("PUT ") || messageContent.startsWith("GET ")){
             return getServer().consistentHashing.propagateRequestToNode(message);
-
+        }
         return null;
     }
 }

@@ -1,19 +1,27 @@
 package LoadBalancer;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.Scanner;
+import java.util.UUID;
 
 public class Main {
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, SQLException {
+
         boolean debug = true;
-        int port = 3000;
-        String confFile = "conf0.txt";
+
+        String conf = "conf1.txt";
+        int port = 8080;
+        String id = UUID.randomUUID().toString();
+
+
         if (!debug){
-            port =  Integer.parseInt(args[0]);
-            if (args.length==2)
-                confFile =  args[1];
+            id = args[0];
+            port = Integer.parseInt(args[1]);
+            conf = args[2];
         }
 
-        Server server = new Server("conf/" + confFile, port,3, 3);
+
+        Server server = new Server(id,"conf/" + conf, port, 3, 3);
 
         server.startThreads();
 

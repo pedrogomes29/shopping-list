@@ -13,7 +13,7 @@ public class TokenNode extends Node.Node{
         active = true;
     }
 
-    public static String[] getVirtualNodesHashes(String nodeId, int nrVirtualNodesPerNode) {
+    public static String[] getVirtualNodesHashes(String nodeId, int nrVirtualNodesPerNode)  {
         String[] hashes = new String[nrVirtualNodesPerNode];
         for(int i=0; i < nrVirtualNodesPerNode; i++){
             String virtualNodeId = nodeId + "-" + i;

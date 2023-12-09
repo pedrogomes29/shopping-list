@@ -11,23 +11,23 @@ public class MessageProcessor extends NioChannels.Message.MessageProcessor{
         super(server, message);
     }
 
-    private void dealWithNewLB(String messageContent){
-        try {
-            InetSocketAddress address = (InetSocketAddress) this.message.getSocket().socketChannel.getRemoteAddress();
-            String newLBHost = address.getHostString();
+    private void dealWithNewLB(String messageContent) throws IOException {
+        InetSocketAddress address = (InetSocketAddress) this.message.getSocket().socketChannel.getRemoteAddress();
+        String newLBHost = address.getHostString();
 
-            int newLBPort = Integer.parseInt(messageContent.split(" ")[1]);
-            ((Server) server).addLoadBalancer(new InetSocketAddress(newLBHost, newLBPort));
-        }catch (IOException e){
-            System.err.println("Error: Cannot get address from socket");
-        }
+        int newLBPort = Integer.parseInt(messageContent.split(" ")[1]);
+        ((Server)server).addLoadBalancer(new InetSocketAddress(newLBHost,newLBPort));
     }
 
     @Override
     public void run() {
         String messageContent = new String(message.bytes);
         if(messageContent.startsWith("ADD_LB ")){
-            dealWithNewLB(messageContent);
+            try {
+                dealWithNewLB(messageContent);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
         else if(messageContent.equals("WHOIS LB")){
             InetSocketAddress lbAddress = ((Server)server).getLoadBalancer();

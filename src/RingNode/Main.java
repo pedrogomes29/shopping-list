@@ -3,20 +3,27 @@ package RingNode;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Scanner;
+import java.util.UUID;
 
 public class Main {
 
     public static void main(String[] args) throws SQLException, IOException {
-        boolean debug = true;
-        int port = 101;
-        String confFile = "conf1.txt";
-        if (!debug){
-            port =  Integer.parseInt(args[0]);
-            confFile =  args[1];
 
+        boolean debug = true;
+
+        String conf = "conf1.txt";
+        int port = 103;
+        String id = UUID.randomUUID().toString();
+
+
+        if (!debug){
+            id = args[0];
+            port = Integer.parseInt(args[1]);
+            conf = args[2];
         }
 
-        Server server = new Server("conf/" + confFile, port, 3, 3);
+
+        Server server = new Server(id,"conf/" + conf, port, 3, 3);
         server.startThreads();
 
         Scanner scanner = new Scanner(System.in);
