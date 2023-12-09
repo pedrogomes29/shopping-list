@@ -1,10 +1,9 @@
 package RingNode.ConsistentHashing;
 
-import NioChannels.Message.Message;
+import NioChannels.Socket.Socket;
 import Node.ConsistentHashing.TokenNode;
 import RingNode.Server;
 
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 public class ConsistentHashing extends Node.ConsistentHashing.ConsistentHashing{
@@ -18,12 +17,17 @@ public class ConsistentHashing extends Node.ConsistentHashing.ConsistentHashing{
     }
 
 
-    public synchronized boolean addNodeToRing(TokenNode node) throws NoSuchAlgorithmException {
+    public synchronized boolean addNodeToRing(TokenNode node)  {
         String[] virtualNodeHashes = TokenNode.getVirtualNodesHashes(node.getId(),nrVirtualNodesPerNode);
         int nrRealNodes = getNrRealNodes();
         for(String virtualNodeHash:virtualNodeHashes) {
-            if (hashToNode.containsKey(virtualNodeHash))
+            if (hashToNode.containsKey(virtualNodeHash)) {
+                if (!hashToNode.get(virtualNodeHash).isActive())
+                    break;
+
                 return false;
+            }
+
             int positionToInsert = binarySearch(virtualNodeHash);
             if(nrRealNodes<nrReplicas)
                 continue;
@@ -69,16 +73,13 @@ public class ConsistentHashing extends Node.ConsistentHashing.ConsistentHashing{
             }
 
         }
-        for(String virtualNodeHash:virtualNodeHashes) {
-            int positionToInsert = binarySearch(virtualNodeHash);
-            hashToNode.put(virtualNodeHash, node);
-            nodeHashes.add(positionToInsert, virtualNodeHash);
-        }
+
+        super.addNodeToRing(node);
 
         return true;
     }
 
-    public synchronized boolean addSelfToRing(TokenNode self) throws NoSuchAlgorithmException {
+    public synchronized boolean addSelfToRing(TokenNode self) {
         String[] virtualNodeHashes = TokenNode.getVirtualNodesHashes(self.getId(),nrVirtualNodesPerNode);
         for(String virtualNodeHash:virtualNodeHashes) {
             if (hashToNode.containsKey(virtualNodeHash))
@@ -92,5 +93,15 @@ public class ConsistentHashing extends Node.ConsistentHashing.ConsistentHashing{
         }
 
         return true;
+    }
+
+    public void markTemporaryNode(Socket socket) {
+        if (socket == null) return;
+
+        TokenNode token = socketToToken.get(socket);
+        if (token == null) return;
+
+        token.setActive(false);
+        socketToToken.remove(socket);
     }
 }

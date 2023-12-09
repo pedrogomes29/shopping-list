@@ -8,7 +8,6 @@ import NioChannels.Socket.Socket;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 import Node.Node;
@@ -48,7 +47,7 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
             return getServer().connect(host, port);
     }
 
-    public void addNode(String nodeID, String nodeHost, int nodePort, Socket socketToNode) throws NoSuchAlgorithmException {
+    public void addNode(String nodeID, String nodeHost, int nodePort, Socket socketToNode)  {
         InetSocketAddress newNodeEndpointSocketAddress = new InetSocketAddress(nodeHost, nodePort);
         TokenNode tokenNode = new TokenNode(socketToNode,nodeID,newNodeEndpointSocketAddress);
         if (getServer().consistentHashing.addNodeToRing(tokenNode))
@@ -92,27 +91,24 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
             firstOneConnected = true;
         }
 
-        try {
-            if (Objects.equals(method, "ADD_NODE")) {
-                if (!getServer().knowsAboutRingNode(newNodeID)) {
-                    Socket socketToNewNode = getNewNodeSocket(newNodeHost, newNodePort, firstOneConnected);
-                    addNode(newNodeID, newNodeHost, newNodePort, socketToNewNode);
-                }
+        if (Objects.equals(method, "ADD_NODE")) {
+            if (!getServer().knowsAboutRingNode(newNodeID)) {
+                Socket socketToNewNode = getNewNodeSocket(newNodeHost, newNodePort, firstOneConnected);
+                addNode(newNodeID, newNodeHost, newNodePort, socketToNewNode);
             }
-            else if (Objects.equals(method, "ADD_LB")) {
-                if (!getServer().knowsAboutLBNode(newNodeID)) {
-                    Socket socketToNewNode = getNewNodeSocket(newNodeHost, newNodePort, firstOneConnected);
-                    addLB(newNodeID, newNodeHost, newNodePort, socketToNewNode);
-                }
+
+        }
+        else if (Objects.equals(method, "ADD_LB")) {
+            if (!getServer().knowsAboutLBNode(newNodeID)) {
+                Socket socketToNewNode = getNewNodeSocket(newNodeHost, newNodePort, firstOneConnected);
+                addLB(newNodeID, newNodeHost, newNodePort, socketToNewNode);
             }
-            else if (Objects.equals(method, "ADD_ADMIN")) {
-                if (!getServer().knowsAboutAdminNode(newNodeID)) {
-                    Socket socketToNewNode = getNewNodeSocket(newNodeHost, newNodePort, firstOneConnected);
-                    addAdmin(newNodeID, newNodeHost, newNodePort, socketToNewNode);
-                }
+        }
+        else if (Objects.equals(method, "ADD_ADMIN")) {
+            if (!getServer().knowsAboutAdminNode(newNodeID)) {
+                Socket socketToNewNode = getNewNodeSocket(newNodeHost, newNodePort, firstOneConnected);
+                addAdmin(newNodeID, newNodeHost, newNodePort, socketToNewNode);
             }
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
         }
 
         return method + " " + newNodeID + " " + newNodeHost + ":" + newNodePort;
@@ -131,7 +127,7 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
             if (getServer().consistentHashing.addNodeToRing(tokenNode))
                 getServer().gossiper.addNeighbor(tokenNode);
 
-        } catch (NoSuchAlgorithmException | IOException e) {
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -167,10 +163,12 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         }
         String newNodeHost = address.getHostString();
         InetSocketAddress newNodeEndpoint = new InetSocketAddress(newNodeHost,newNodePort);
+
         Node adminNode = new Node(message.getSocket(), newNodeID, newNodeEndpoint);
+        getServer().gossiper.addNeighbor(adminNode);
     }
 
-    public String receiveRemoveMessage(String removeNodeMessage) throws NoSuchAlgorithmException {
+    public String receiveRemoveMessage(String removeNodeMessage) {
         String nodeID = removeNodeMessage.split(" ")[1];
         if (!getServer().alreadyRemovedNode(nodeID)) {
             for (TokenNode tokenNode: getServer().consistentHashing.getHashToNode().values()) {
@@ -182,7 +180,7 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         return "REMOVE " + nodeID;
     }
 
-    public void receiveRumour(String rumour) throws NoSuchAlgorithmException {
+    public void receiveRumour(String rumour) {
         Socket rumourSender = message.getSocket();
         Queue<Message> messageQueue = this.server.getWriteQueue();
         boolean alreadyReceivedRumour = false;
@@ -203,7 +201,7 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
                     alreadyReceivedRumour = getServer().knowsAboutAdminNode(nodeID);
 
                 newrumour = receiveNewNodeWithEndpoint(rumour);
-            } catch (IOException | NoSuchAlgorithmException e) {
+            } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         } else if (removeNodeRumour) {
@@ -265,14 +263,10 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
                 int nodePort = Integer.parseInt(nodeEndpointParts[1]);
                 Socket socketToNode = getServer().connect(nodeHost,nodePort);
                 if (Objects.equals(nodeType, "NODE")) {
-                    try {
-                        addNode(nodeID,nodeHost,nodePort,socketToNode);
-                    } catch (NoSuchAlgorithmException e) {
-                        throw new RuntimeException(e);
-                    }
+                    addNode(nodeID, nodeHost, nodePort, socketToNode);
                 }
-                else if (Objects.equals(nodeType, "LB")){
-                    addLB(nodeID,nodeHost,nodePort,socketToNode);
+                else if (Objects.equals(nodeType, "LB")) {
+                    addLB(nodeID, nodeHost, nodePort, socketToNode);
                 }
             }
             else
@@ -291,8 +285,9 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
                 messageToAddNode = "REQUEST_ADD_LB";
             }
             messageToAddNode += " " + nodeNotReceived.getId() + " " +
-                    nodeNotReceived.getNodeEndpoint().getHostName() + ":" + nodeNotReceived.getNodeEndpoint().getPort();
-            synchronized (writeQueue){
+                nodeNotReceived.getNodeEndpoint().getHostString() + ":" + nodeNotReceived.getNodeEndpoint().getPort();
+
+            synchronized (writeQueue) {
                 writeQueue.add(new Message(messageToAddNode,message.getSocket()));
             }
         }
@@ -307,11 +302,7 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         String newNodeHost = newNodeEndpointParts[0];
         int newNodePort = Integer.parseInt(newNodeEndpointParts[1]);
         Socket newNodeSocket = getServer().connect(newNodeHost,newNodePort);
-        try {
-            addNode(newNodeID,newNodeHost,newNodePort,newNodeSocket);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
+        addNode(newNodeID,newNodeHost,newNodePort,newNodeSocket);
     }
 
     public void requestAddLB(String messageContent){
@@ -333,11 +324,7 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
             // first one send
             String[] messageParts = messageContent.split(" ", 2);
             String rumour = messageParts[1];
-            try {
-                receiveRumour(rumour);
-            } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
-            }
+            receiveRumour(rumour);
         }
         else if (messageContent.startsWith("RUMOUR_ACK ")) {
             String[] messageParts = messageContent.split(" ", 2);
@@ -364,11 +351,7 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         } else if (messageContent.startsWith("GET_RESPONSE")) {
             receiveReply(messageContent, 3);
         } else if (messageContent.startsWith("REMOVE ")) {
-            try {
-                receiveRemoveMessage(messageContent);
-            } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
-            }
+            receiveRemoveMessage(messageContent);
         }
 
         Set<String> nodes = getServer().consistentHashing.getNodes();

@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class ConsistentHashing {
@@ -16,14 +17,16 @@ public class ConsistentHashing {
     protected final int nrVirtualNodesPerNode;
     protected final ArrayList<String> nodeHashes;
 
-    protected final HashMap<String, TokenNode> hashToNode;
+    protected final ConcurrentHashMap<String, TokenNode> hashToNode;
+    protected final ConcurrentHashMap<Socket, TokenNode> socketToToken;
 
 
     public ConsistentHashing(int nrReplicas, int nrVirtualNodesPerNode){
         this.nrReplicas = nrReplicas;
         this.nrVirtualNodesPerNode = nrVirtualNodesPerNode;
         this.nodeHashes = new ArrayList<>();
-        this.hashToNode = new HashMap<>();
+        this.hashToNode = new ConcurrentHashMap<>();
+        this.socketToToken = new ConcurrentHashMap<>();
     }
 
     public int binarySearch(String hash) {
@@ -45,33 +48,42 @@ public class ConsistentHashing {
         return low;
     }
 
-    public synchronized boolean addNodeToRing(TokenNode node) throws NoSuchAlgorithmException {
+    public synchronized boolean addNodeToRing(TokenNode node) {
         String[] virtualNodeHashes = TokenNode.getVirtualNodesHashes(node.getId(),nrVirtualNodesPerNode);
         for(String virtualNodeHash:virtualNodeHashes) {
-            if (hashToNode.containsKey(virtualNodeHash))
-                return false;
 
             hashToNode.put(virtualNodeHash, node);
-            int positionToInsert = binarySearch(virtualNodeHash);
-            nodeHashes.add(positionToInsert, virtualNodeHash);
+            addTokenSocket(node.getSocket(), node);
+
+            if (hashToNode.containsKey(virtualNodeHash)) {
+                int positionToInsert = binarySearch(virtualNodeHash);
+                nodeHashes.add(positionToInsert, virtualNodeHash);
+            }
         }
         return true;
     }
 
-    public synchronized void removeNodeFromRing(TokenNode node) throws NoSuchAlgorithmException {
+    public synchronized void removeNodeFromRing(TokenNode node) {
         String[] virtualNodeHashes = TokenNode.getVirtualNodesHashes(node.getId(),nrVirtualNodesPerNode);
-        for(String virtualNodeHash:virtualNodeHashes) {
+        for (String virtualNodeHash:virtualNodeHashes) {
             if(!hashToNode.containsKey(virtualNodeHash))
                 continue;
 
             hashToNode.remove(virtualNodeHash, node);
             int positionToRemove = binarySearch(virtualNodeHash);
-            if(Objects.equals(nodeHashes.get(positionToRemove), virtualNodeHash))
+            if (Objects.equals(nodeHashes.get(positionToRemove), virtualNodeHash))
                 nodeHashes.remove(positionToRemove);
         }
     }
 
-    public synchronized boolean isObjectReplica(String nodeId, String objectId) throws NoSuchAlgorithmException {
+    private void addTokenSocket(Socket socket, TokenNode node){
+        if (socket == null)
+            return;
+
+        socketToToken.put(socket, node);
+    }
+
+    public synchronized boolean isObjectReplica(String nodeId, String objectId)  {
         int nrNodes = nodeHashes.size();
         if(nrNodes<nrReplicas)
             throw new RuntimeException("Not enough replicas");
@@ -86,12 +98,12 @@ public class ConsistentHashing {
             int idx = (firstNodeToStoreIdx + i) % nrNodes;
             String currentVirtualNodeHash = nodeHashes.get(idx);
             TokenNode currentRealNode = hashToNode.get(currentVirtualNodeHash);
-            if(!realNodesToPropagateRequest.contains(currentRealNode)) {
+            if (!realNodesToPropagateRequest.contains(currentRealNode)) {
                 virtualNodesToPropagateRequest.add(currentVirtualNodeHash);
                 realNodesToPropagateRequest.add(currentRealNode);
             }
         }
-        for(String virtualNodeHash:virtualNodeHashes) {
+        for (String virtualNodeHash:virtualNodeHashes) {
             if (virtualNodesToPropagateRequest.contains(virtualNodeHash))
                 return true;
         }
@@ -104,18 +116,17 @@ public class ConsistentHashing {
      *
      * @param message The message containing the request and object ID.
      * @return The socket of the selected node to handle the request.
-     * @throws NoSuchAlgorithmException If the required hashing algorithm is not available.
      */
-    public synchronized Socket propagateRequestToNode(Message message) throws NoSuchAlgorithmException {
+    public synchronized Socket propagateRequestToNode(Message message) {
         int nrNodes = nodeHashes.size();
-        if(nrNodes<nrReplicas)
+        if (getNrRealNodes()<nrReplicas)
             throw new RuntimeException("Not enough replicas");
         String objectID = new String(message.bytes).split(" ")[1];
         String idHash = Utils.Hasher.md5(objectID);
         int firstNodeToStoreIdx = binarySearch(idHash);
         Set<TokenNode> realNodesToPropagateRequest = new HashSet<>();
         int[] choicesIdx = new int[nrReplicas];
-        for(int idxOffset=0;realNodesToPropagateRequest.size()<nrReplicas && idxOffset<nrNodes-1;idxOffset++){
+        for (int idxOffset=0; realNodesToPropagateRequest.size()<nrReplicas && idxOffset<nrNodes-1; idxOffset++) {
             int idx = (firstNodeToStoreIdx+idxOffset)%nrNodes;
             String currentVirtualNodeHash = nodeHashes.get(idx);
             TokenNode currentRealNode = hashToNode.get(currentVirtualNodeHash);
@@ -124,10 +135,17 @@ public class ConsistentHashing {
                 realNodesToPropagateRequest.add(currentRealNode);
             }
         }
+
         int randomChoice = ThreadLocalRandom.current().nextInt(0, nrReplicas);
-        System.out.println("Random " + randomChoice + " total " + firstNodeToStoreIdx);
-        String nodeHash = nodeHashes.get(choicesIdx[randomChoice]);
-        TokenNode node = hashToNode.get(nodeHash);
+        TokenNode node;
+        int i = 0;
+        do {
+            int choice = (randomChoice+i)%choicesIdx.length;
+            String nodeHash = nodeHashes.get(choicesIdx[choice]);
+            node = hashToNode.get(nodeHash);
+            i++;
+        } while(!node.isActive());
+
         return node.getSocket();
     }
 
@@ -144,7 +162,23 @@ public class ConsistentHashing {
         return nodeHashes.size();
     }
 
-    public synchronized HashMap<String, TokenNode> getHashToNode() {
+    public boolean containsHash(String virtualNodeIDHash) {
+        TokenNode node = hashToNode.get(virtualNodeIDHash);
+
+        return node != null && node.isActive();
+    }
+
+    public void markTemporaryNode(Socket socket) {
+        if (socket == null) return;
+
+        TokenNode token = socketToToken.get(socket);
+        if (token == null) return;
+
+        token.setActive(false);
+        socketToToken.remove(socket);
+    }
+    
+    public synchronized ConcurrentHashMap<String, TokenNode> getHashToNode() {
         return hashToNode;
     }
 

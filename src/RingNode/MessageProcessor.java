@@ -2,7 +2,6 @@ package RingNode;
 
 import NioChannels.Message.Message;
 
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 import NioChannels.Socket.Socket;
@@ -46,14 +45,8 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
             shoppingListCRDT = shoppingListCRDTFromClient;
 
         String objectIDHash,objectHash;
-        try {
-            objectIDHash = Hasher.md5(objectID);
-            objectHash = Hasher.encodeAndMd5(shoppingListCRDT);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
-
-
+        objectIDHash = Hasher.md5(objectID);
+        objectHash = Hasher.encodeAndMd5(shoppingListCRDT);
 
         ((RingNode.Server)server).getDB().insertData(objectID, objectIDHash,
                                                     Serializer.serializeBase64(shoppingListCRDT),objectHash);
@@ -80,7 +73,7 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
     }
 
 
-    private void receiveSynchronize(Message message, String[] messageContentParts) throws NoSuchAlgorithmException{
+    private void receiveSynchronize(Message message, String[] messageContentParts){
 
         String startingHash = messageContentParts[1];
         String endingHash = messageContentParts[2];
@@ -146,18 +139,15 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
         }
 
         String objectIDHash,objectHash;
-        try {
-            objectIDHash = Hasher.md5(objectID);
-            objectHash = Hasher.encodeAndMd5(shoppingListCRDT);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
+        objectIDHash = Hasher.md5(objectID);
+        objectHash = Hasher.encodeAndMd5(shoppingListCRDT);
+
 
         ((RingNode.Server)server).getDB().insertData(objectID, objectIDHash,
                                                      Serializer.serializeBase64(shoppingListCRDT),objectHash);
     }
 
-    private void receiveSynchronizeDiff(Message message, String[] messageContentParts) throws NoSuchAlgorithmException{
+    private void receiveSynchronizeDiff(Message message, String[] messageContentParts) {
         String objects = messageContentParts[1];
         String[] objectsParts = objects.split(",");
         StringBuilder synchronizationMessageBuilder = new StringBuilder("SYNCHRONIZE_RESPONSE" + " ");
@@ -193,7 +183,7 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
     }
 
 
-    private void receiveSynchronizeResponse(Message message, String[] messageContentParts) throws NoSuchAlgorithmException{
+    private void receiveSynchronizeResponse(Message message, String[] messageContentParts) {
         String objects = messageContentParts[1];
         String[] objectsParts = objects.split(",");
         for(String object:objectsParts){
@@ -217,28 +207,20 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
         String[] messageContentParts = messageContent.split(" ");
         String messageType = messageContentParts[0];
         String objectID = messageContentParts[1];
-        try {
-            if(getServer().consistentHashing.isObjectReplica(getServer().getNodeId(), objectID)){
-                switch (messageType){
-                    case "PUT":
-                        receivePut(message, messageContentParts);
-                        break;
-                    case "GET":
-                        receiveGet(message, messageContentParts);
-                        break;
+        if(getServer().consistentHashing.isObjectReplica(getServer().getNodeId(), objectID)){
+            switch (messageType){
+                case "PUT":
+                    receivePut(message, messageContentParts);
+                    break;
+                case "GET":
+                    receiveGet(message, messageContentParts);
+                    break;
 
-                    default:
-                        throw new RuntimeException("MessageType unknown " + messageType);
-                }
-            }else {
-                try {
-                    return getServer().consistentHashing.propagateRequestToNode(message);
-                } catch (NoSuchAlgorithmException e) {
-                    throw new RuntimeException(e);
-                }
+                default:
+                    throw new RuntimeException("MessageType unknown " + messageType);
             }
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+        }else {
+            return getServer().consistentHashing.propagateRequestToNode(message);
         }
 
         return null;
@@ -252,25 +234,14 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
         String messageType = messageContentParts[0];
         switch(messageType) {
             case "SYNCHRONIZE":
-                try {
-                    receiveSynchronize(message, messageContentParts);
-                } catch (NoSuchAlgorithmException e) {
-                    throw new RuntimeException(e);
-                }
+                receiveSynchronize(message, messageContentParts);
                 break;
             case "SYNCHRONIZE_DIFF":
-                try {
-                    receiveSynchronizeDiff(message, messageContentParts);
-                } catch (NoSuchAlgorithmException e) {
-                    throw new RuntimeException(e);
-                }
+                receiveSynchronizeDiff(message, messageContentParts);
+
                 break;
             case "SYNCHRONIZE_RESPONSE":
-                try {
-                    receiveSynchronizeResponse(message, messageContentParts);
-                } catch (NoSuchAlgorithmException e) {
-                    throw new RuntimeException(e);
-                }
+                receiveSynchronizeResponse(message, messageContentParts);
                 break;
         }
     }
