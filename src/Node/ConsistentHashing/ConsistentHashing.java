@@ -144,7 +144,6 @@ public class ConsistentHashing {
         return nodeHashes.size();
     }
 
-
     public synchronized HashMap<String, TokenNode> getHashToNode() {
         return hashToNode;
     }

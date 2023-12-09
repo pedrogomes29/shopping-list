@@ -170,15 +170,19 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         Node adminNode = new Node(message.getSocket(), newNodeID, newNodeEndpoint);
     }
 
-    public String receiveRemoveMessage(String removeNodeMessage) {
+    public String receiveRemoveMessage(String removeNodeMessage) throws NoSuchAlgorithmException {
         String nodeID = removeNodeMessage.split(" ")[1];
-        // TODO: REMOVE
-        // if (!getServer().alreadyRemovedNode(nodeID)) {
-        // }
+        if (!getServer().alreadyRemovedNode(nodeID)) {
+            for (TokenNode tokenNode: getServer().consistentHashing.getHashToNode().values()) {
+                if (Objects.equals(tokenNode.getId(), nodeID)) {
+                    getServer().consistentHashing.removeNodeFromRing(tokenNode);
+                }
+            }
+        }
         return "REMOVE " + nodeID;
     }
 
-    public void receiveRumour(String rumour) {
+    public void receiveRumour(String rumour) throws NoSuchAlgorithmException {
         Socket rumourSender = message.getSocket();
         Queue<Message> messageQueue = this.server.getWriteQueue();
         boolean alreadyReceivedRumour = false;
@@ -329,7 +333,11 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
             // first one send
             String[] messageParts = messageContent.split(" ", 2);
             String rumour = messageParts[1];
-            receiveRumour(rumour);
+            try {
+                receiveRumour(rumour);
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
+            }
         }
         else if (messageContent.startsWith("RUMOUR_ACK ")) {
             String[] messageParts = messageContent.split(" ", 2);
@@ -356,7 +364,11 @@ public abstract class MessageProcessor extends NioChannels.Message.MessageProces
         } else if (messageContent.startsWith("GET_RESPONSE")) {
             receiveReply(messageContent, 3);
         } else if (messageContent.startsWith("REMOVE ")) {
-            receiveRemoveMessage(messageContent);
+            try {
+                receiveRemoveMessage(messageContent);
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
+            }
         }
     }
 
