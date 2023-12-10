@@ -1,5 +1,6 @@
 package Client;
 
+import ShoppingList.CCounter;
 import ShoppingList.ShoppingListCRDT;
 import Utils.Hasher;
 import Utils.Serializer;
@@ -8,6 +9,7 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.security.NoSuchAlgorithmException;
+import java.util.Map;
 
 public class Client {
     private Socket socketToLB;
@@ -119,8 +121,11 @@ public class Client {
 
                     Object returnedObject = Serializer.deserializeBase64(response[2]);
 
-                    if (returnedObject instanceof ShoppingListCRDT)
-                        return (ShoppingListCRDT) returnedObject;
+                    if (returnedObject instanceof ShoppingListCRDT) {
+                        ShoppingListCRDT shoppingListCRDT = new ShoppingListCRDT();
+                        shoppingListCRDT.merge((ShoppingListCRDT) returnedObject);
+                        return shoppingListCRDT;
+                    }
                     break;
                 }
             }

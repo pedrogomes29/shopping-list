@@ -1,5 +1,6 @@
 package RingNode;
 
+import Database.Database;
 import NioChannels.Message.Message;
 
 import java.util.*;
@@ -35,21 +36,22 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
     private void receivePut(Message message, String[] messageContentParts){
         String objectID = messageContentParts[1];
         ShoppingListCRDT shoppingListCRDTFromClient = (ShoppingListCRDT)Serializer.deserializeBase64(messageContentParts[2]);
-        String shoppingListCRDTInDatabaseBase64 = ((RingNode.Server)server).getDB().getShoppingList(objectID);
-        ShoppingListCRDT shoppingListCRDT;
+
+        Database db = ((RingNode.Server)server).getDB();
+
+        String shoppingListCRDTInDatabaseBase64 = db.getShoppingList(objectID);
+        ShoppingListCRDT shoppingListCRDT = new ShoppingListCRDT();
         if(shoppingListCRDTInDatabaseBase64!=null) {
             shoppingListCRDT = (ShoppingListCRDT) Serializer.deserializeBase64(shoppingListCRDTInDatabaseBase64);
-            shoppingListCRDT.merge(shoppingListCRDTFromClient);
         }
-        else //first time receiving this shopping list, simply store it
-            shoppingListCRDT = shoppingListCRDTFromClient;
+
+        shoppingListCRDT.merge(shoppingListCRDTFromClient);
 
         String objectIDHash,objectHash;
         objectIDHash = Hasher.md5(objectID);
         objectHash = Hasher.encodeAndMd5(shoppingListCRDT);
 
-        ((RingNode.Server)server).getDB().insertData(objectID, objectIDHash,
-                                                    Serializer.serializeBase64(shoppingListCRDT),objectHash);
+        db.insertData(objectID, objectIDHash, Serializer.serializeBase64(shoppingListCRDT),objectHash);
 
         sendPutACK(message, objectID, messageContentParts);
     }
@@ -130,13 +132,15 @@ public class MessageProcessor extends Node.Message.MessageProcessor {
         if(Objects.equals(otherReplicaObjectBase64, "null")) //the other node didnt send anything
             return;
         ShoppingListCRDT shoppingListCRDT;
-        if(thisReplicaObjectBase64==null) //new object, simply store it
-            shoppingListCRDT = (ShoppingListCRDT)Serializer.deserializeBase64(otherReplicaObjectBase64);
-        else { //different object version, merge it
-            ShoppingListCRDT otherReplicaShoppingList = (ShoppingListCRDT) Serializer.deserializeBase64(otherReplicaObjectBase64);
+        ShoppingListCRDT otherReplicaShoppingList = (ShoppingListCRDT) Serializer.deserializeBase64(otherReplicaObjectBase64);
+
+        if(thisReplicaObjectBase64==null) { //new object, simply store it
+            shoppingListCRDT = new ShoppingListCRDT();
+        }else {
             shoppingListCRDT = (ShoppingListCRDT) Serializer.deserializeBase64(thisReplicaObjectBase64);
-            shoppingListCRDT.merge(otherReplicaShoppingList);
         }
+
+        shoppingListCRDT.merge(otherReplicaShoppingList);
 
         String objectIDHash,objectHash;
         objectIDHash = Hasher.md5(objectID);
