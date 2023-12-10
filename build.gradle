@@ -22,7 +22,7 @@ tasks.register('Admin', JavaExec) {
     main = 'Admin.Main'
     classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath
     standardInput = System.in
-    args project.port, project.filePath
+    args project.port, project.conf
 }
 
 tasks.register('LoadBalancer', JavaExec) {
