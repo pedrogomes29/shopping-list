@@ -22,25 +22,21 @@ tasks.register('Admin', JavaExec) {
     main = 'Admin.Main'
     classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath
     standardInput = System.in
-    args project.port, project.conf
+    args project.id, project.port, project.conf
 }
 
 tasks.register('LoadBalancer', JavaExec) {
     main = 'LoadBalancer.Main'
     classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath
     standardInput = System.in
-
     args project.id, project.port, project.conf
-
 }
 
 tasks.register('Node', JavaExec) {
     main = 'RingNode.Main'
     classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath
     standardInput = System.in
-
     args project.id, project.port, project.conf
-
 }
 
 tasks.register('Client', JavaExec) {
@@ -53,5 +49,3 @@ tasks.register('DnsMock', JavaExec) {
     main = 'DnsMock.Main'
     classpath = sourceSets.main.output + sourceSets.main.runtimeClasspath
 }
-sourceCompatibility = JavaVersion.VERSION_16
-targetCompatibility = JavaVersion.VERSION_16
