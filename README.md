@@ -8,6 +8,9 @@ The cloud needs at least 3 nodes to work properly.
 
 Configuration files should contain a list of IP:port of the nodes that are already in network and to which the newly added node should connect to.
 
+## Video Demonstration
+https://www.youtube.com/watch?v=Ox6AhVOMrng
+
 ## Runing the DNS Mock
 ```
 gradlew DnsMock
